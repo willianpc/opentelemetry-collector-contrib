@@ -1,11 +1,10 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 
 import (
 	"errors"
-	"fmt"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -48,33 +47,14 @@ type marshaller struct {
 }
 
 func newMarshaller(conf *Config, host component.Host) (*marshaller, error) {
-	if conf.Encoding != nil {
-		encoding := host.GetExtensions()[*conf.Encoding]
-		if encoding == nil {
-			return nil, fmt.Errorf("unknown encoding %q", conf.Encoding)
-		}
-		// cast with ok to avoid panics.
-		tm, _ := encoding.(ptrace.Marshaler)
-		mm, _ := encoding.(pmetric.Marshaler)
-		lm, _ := encoding.(plog.Marshaler)
-		pm, _ := encoding.(pprofile.Marshaler)
-		return &marshaller{
-			tracesMarshaler:   tm,
-			metricsMarshaler:  mm,
-			logsMarshaler:     lm,
-			profilesMarshaler: pm,
-			compression:       conf.Compression,
-			compressor:        buildCompressor(conf.Compression),
-		}, nil
-	}
 	return &marshaller{
-		formatType:        conf.FormatType,
-		tracesMarshaler:   tracesMarshalers[conf.FormatType],
-		metricsMarshaler:  metricsMarshalers[conf.FormatType],
-		logsMarshaler:     logsMarshalers[conf.FormatType],
-		profilesMarshaler: profilesMarshalers[conf.FormatType],
-		compression:       conf.Compression,
-		compressor:        buildCompressor(conf.Compression),
+		// formatType:        conf.FormatType,
+		tracesMarshaler:   tracesMarshalers[formatTypeJSON],
+		metricsMarshaler:  metricsMarshalers[formatTypeJSON],
+		logsMarshaler:     logsMarshalers[formatTypeJSON],
+		profilesMarshaler: profilesMarshalers[formatTypeJSON],
+		compression:       compressionZSTD,
+		compressor:        buildCompressor(compressionZSTD),
 	}, nil
 }
 
@@ -86,7 +66,7 @@ func (m *marshaller) marshalTraces(td ptrace.Traces) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf = m.compressor(buf)
+	// buf = m.compressor(buf)
 	return buf, nil
 }
 

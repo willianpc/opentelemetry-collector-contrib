@@ -1,4 +1,4 @@
-module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
+module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter
 
 go 1.24.0
 

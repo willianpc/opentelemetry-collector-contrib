@@ -7,13 +7,10 @@ import (
 )
 
 var (
-	Type      = component.MustNewType("file")
+	Type      = component.MustNewType("duckdb")
 	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 )
 
 const (
-	ProfilesStability = component.StabilityLevelDevelopment
-	TracesStability   = component.StabilityLevelAlpha
-	MetricsStability  = component.StabilityLevelAlpha
-	LogsStability     = component.StabilityLevelAlpha
+	TracesStability = component.StabilityLevelAlpha
 )

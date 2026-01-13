@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 
 import (
 	"encoding/binary"
@@ -106,12 +106,12 @@ func (w *fileWriter) shutdown() error {
 }
 
 func buildExportFunc(cfg *Config) func(w *fileWriter, buf []byte) error {
-	if cfg.FormatType == formatTypeProto {
-		return exportMessageAsBuffer
-	}
-	// if the data format is JSON and needs to be compressed, telemetry data can't be written to file in JSON format.
-	if cfg.FormatType == formatTypeJSON && cfg.Compression != "" {
-		return exportMessageAsBuffer
-	}
+	// if cfg.FormatType == formatTypeProto {
+	// 	return exportMessageAsBuffer
+	// }
+	// // if the data format is JSON and needs to be compressed, telemetry data can't be written to file in JSON format.
+	// if cfg.FormatType == formatTypeJSON && cfg.Compression != "" {
+	// 	return exportMessageAsBuffer
+	// }
 	return exportMessageAsLine
 }

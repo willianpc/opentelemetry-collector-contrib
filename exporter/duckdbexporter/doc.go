@@ -4,4 +4,4 @@
 //go:generate mdatagen metadata.yaml
 
 // Package fileexporter exports data to files.
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"

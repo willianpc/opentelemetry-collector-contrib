@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent"
 )
 
@@ -42,7 +42,7 @@ const (
 	defaultResourceAttribute = "fileexporter.path_segment"
 )
 
-type FileExporter interface {
+type DuckDBExporter interface {
 	component.Component
 	consumeTraces(_ context.Context, td ptrace.Traces) error
 	consumeMetrics(_ context.Context, md pmetric.Metrics) error
@@ -56,19 +56,15 @@ func NewFactory() exporter.Factory {
 		metadata.Type,
 		createDefaultConfig,
 		xexporter.WithTraces(createTracesExporter, metadata.TracesStability),
-		xexporter.WithMetrics(createMetricsExporter, metadata.MetricsStability),
-		xexporter.WithLogs(createLogsExporter, metadata.LogsStability),
-		xexporter.WithProfiles(createProfilesExporter, metadata.ProfilesStability))
+	// xexporter.WithMetrics(createMetricsExporter, metadata.MetricsStability),
+	// xexporter.WithLogs(createLogsExporter, metadata.LogsStability),
+	// xexporter.WithProfiles(createProfilesExporter, metadata.ProfilesStability)
+	)
 }
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		FormatType: formatTypeJSON,
-		Rotation:   &Rotation{MaxBackups: defaultMaxBackups},
-		GroupBy: &GroupBy{
-			ResourceAttribute: defaultResourceAttribute,
-			MaxOpenFiles:      defaultMaxOpenFiles,
-		},
+		Enabled: true,
 	}
 }
 
@@ -77,7 +73,7 @@ func createTracesExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Traces, error) {
-	fe := getOrCreateFileExporter(cfg, set.Logger)
+	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
 	return exporterhelper.NewTraces(
 		ctx,
 		set,
@@ -94,7 +90,7 @@ func createMetricsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
-	fe := getOrCreateFileExporter(cfg, set.Logger)
+	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
 	return exporterhelper.NewMetrics(
 		ctx,
 		set,
@@ -111,7 +107,7 @@ func createLogsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Logs, error) {
-	fe := getOrCreateFileExporter(cfg, set.Logger)
+	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
 	return exporterhelper.NewLogs(
 		ctx,
 		set,
@@ -128,7 +124,7 @@ func createProfilesExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (xexporter.Profiles, error) {
-	fe := getOrCreateFileExporter(cfg, set.Logger)
+	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
 	return xexporterhelper.NewProfiles(
 		ctx,
 		set,
@@ -140,30 +136,29 @@ func createProfilesExporter(
 	)
 }
 
-// getOrCreateFileExporter creates a FileExporter and caches it for a particular configuration,
+// getOrCreateDuckDBExporter creates a FileExporter and caches it for a particular configuration,
 // or returns the already cached one. Caching is required because the factory is asked trace and
 // metric receivers separately when it gets CreateTraces() and CreateMetrics()
 // but they must not create separate objects, they must use one Exporter object per configuration.
-func getOrCreateFileExporter(cfg component.Config, logger *zap.Logger) FileExporter {
+func getOrCreateDuckDBExporter(cfg component.Config, logger *zap.Logger) DuckDBExporter {
 	conf := cfg.(*Config)
 	fe := exporters.GetOrAdd(cfg, func() component.Component {
 		return newFileExporter(conf, logger)
 	})
 
 	c := fe.Unwrap()
-	return c.(FileExporter)
+	return c.(DuckDBExporter)
 }
 
-func newFileExporter(conf *Config, logger *zap.Logger) FileExporter {
-	if conf.GroupBy == nil || !conf.GroupBy.Enabled {
-		return &fileExporter{
-			conf: conf,
-		}
-	}
+func newFileExporter(conf *Config, logger *zap.Logger) DuckDBExporter {
+	// if conf.GroupBy == nil || !conf.GroupBy.Enabled {
+	// 	return &duckDBExporter{
+	// 		conf: conf,
+	// 	}
+	// }
 
-	return &groupingFileExporter{
-		conf:   conf,
-		logger: logger,
+	return &duckDBExporter{
+		conf: conf,
 	}
 }
 

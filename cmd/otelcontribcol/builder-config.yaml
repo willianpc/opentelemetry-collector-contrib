@@ -84,6 +84,7 @@ exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.143.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.143.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.143.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter v0.143.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.143.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.143.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudstorageexporter v0.143.0

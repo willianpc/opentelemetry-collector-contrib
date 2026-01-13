@@ -1,14 +1,10 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 
 import (
 	"errors"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
@@ -16,7 +12,7 @@ import (
 
 const (
 	rotationFieldName = "rotation"
-	backupsFieldName  = "max_backups"
+	// backupsFieldName  = "max_backups"
 )
 
 var (
@@ -27,46 +23,8 @@ var (
 
 // Config defines configuration for file exporter.
 type Config struct {
-	// Path of the file to write to. Path is relative to current directory.
-	Path string `mapstructure:"path"`
-
-	// Mode defines whether the exporter should append to the file.
-	// Options:
-	// - false[default]:  truncates the file
-	// - true:  appends to the file.
-	Append bool `mapstructure:"append"`
-
-	// Rotation defines an option about rotation of telemetry files. Ignored
-	// when GroupByAttribute is used.
-	Rotation *Rotation `mapstructure:"rotation"`
-
-	// FormatType define the data format of encoded telemetry data
-	// Options:
-	// - json[default]:  OTLP json bytes.
-	// - proto:  OTLP binary protobuf bytes.
-	FormatType string `mapstructure:"format"`
-
-	// Encoding defines the encoding of the telemetry data.
-	// If specified, it overrides `FormatType` and applies an encoding extension.
-	Encoding *component.ID `mapstructure:"encoding"`
-
-	// Compression Codec used to export telemetry data
-	// Supported compression algorithms:`zstd`
-	Compression string `mapstructure:"compression"`
-
-	// FlushInterval is the duration between flushes.
-	// See time.ParseDuration for valid values.
-	FlushInterval time.Duration `mapstructure:"flush_interval"`
-
-	// GroupBy enables writing to separate files based on a resource attribute.
-	GroupBy *GroupBy `mapstructure:"group_by"`
-
-	// CreateDirectory specifies that the parent directory of the output file should be created automatically on start.
-	CreateDirectory bool `mapstructure:"create_directory"`
-	// DirectoryPermissions specifies permissions used when creating directories (minus process umask).
-	// Value must be an octal string like "0755".
-	DirectoryPermissions       string `mapstructure:"directory_permissions"`
-	directoryPermissionsParsed int64  `mapstructure:"-"`
+	Enabled                    bool  `mapstructure:"enabled"`
+	directoryPermissionsParsed int64 `mapstructure:"-"`
 }
 
 // Rotation an option to rolling log files
@@ -111,61 +69,6 @@ var _ component.Config = (*Config)(nil)
 
 // Validate checks if the exporter configuration is valid
 func (cfg *Config) Validate() error {
-	if cfg.Path == "" {
-		return errors.New("path must be non-empty")
-	}
-	if cfg.Append && cfg.Compression != "" {
-		return errors.New("append and compression enabled at the same time is not supported")
-	}
-	if cfg.Append && cfg.Rotation != nil {
-		return errors.New("append and rotation enabled at the same time is not supported")
-	}
-	if cfg.FormatType != formatTypeJSON && cfg.FormatType != formatTypeProto {
-		return errors.New("format type is not supported")
-	}
-	if cfg.Compression != "" && cfg.Compression != compressionZSTD {
-		return errors.New("compression is not supported")
-	}
-	if cfg.FlushInterval < 0 {
-		return errors.New("flush_interval must be larger than zero")
-	}
-
-	if cfg.GroupBy != nil && cfg.GroupBy.Enabled {
-		pathParts := strings.Split(cfg.Path, "*")
-		if len(pathParts) != 2 {
-			return errors.New("path must contain exactly one * when group_by is enabled")
-		}
-
-		if pathParts[0] == "" {
-			return errors.New("path must not start with * when group_by is enabled")
-		}
-
-		if cfg.GroupBy.ResourceAttribute == "" {
-			return errors.New("resource_attribute must not be empty when group_by is enabled")
-		}
-	}
-
-	// If directory auto-creation is enabled, validate and parse permissions.
-	if cfg.CreateDirectory {
-		permStr := cfg.DirectoryPermissions
-		// Default to 0755 if not provided.
-		if permStr == "" {
-			permStr = "0755"
-			cfg.DirectoryPermissions = permStr
-		}
-		permissions, err := strconv.ParseInt(permStr, 8, 32)
-		if err != nil {
-			return errInvalidOctal
-		}
-		if permissions&int64(os.ModePerm) != permissions {
-			return errInvalidPermissionBits
-		}
-		cfg.directoryPermissionsParsed = permissions
-	} else if cfg.DirectoryPermissions != "" {
-		// If not creating directories, directory_permissions must not be set.
-		return errDirPermsRequireCreate
-	}
-
 	return nil
 }
 
@@ -180,15 +83,5 @@ func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
 		return err
 	}
 
-	// next manually search for protocols in the confmap.Conf,
-	// if rotation is not present it means it is disabled.
-	if !componentParser.IsSet(rotationFieldName) {
-		cfg.Rotation = nil
-	}
-
-	// set flush interval to 1 second if not set.
-	if cfg.FlushInterval == 0 {
-		cfg.FlushInterval = time.Second
-	}
 	return nil
 }

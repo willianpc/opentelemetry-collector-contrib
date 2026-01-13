@@ -59,6 +59,7 @@ body:
       - exporter/datadog
       - exporter/dataset
       - exporter/doris
+      - exporter/duckdb
       - exporter/elasticsearch
       - exporter/faro
       - exporter/file

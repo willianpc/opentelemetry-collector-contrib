@@ -1,13 +1,14 @@
-type: file
+type: duckdb
 
 status:
   class: exporter
   stability:
-    alpha: [traces, metrics, logs]
-    development: [profiles]
+    # alpha: [traces, metrics, logs]
+    alpha: [traces]
+    # development: [profiles]
   distributions: [core, contrib, k8s]
   codeowners:
-    active: [atingchen]
+    active: [willianpc]
 
 tests:
   config:

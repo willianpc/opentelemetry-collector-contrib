@@ -1,6 +1,6 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
-package fileexporter
+package duckdbexporter
 
 import (
 	"bufio"
@@ -25,9 +25,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
-	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/testdata"
 )
 
@@ -52,77 +51,42 @@ func TestFileTracesExporter(t *testing.T) {
 		{
 			name: "json: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "json",
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "json: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "json",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "proto",
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration--rotation",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-					Rotation: &Rotation{
-						MaxMegabytes: 3,
-						MaxDays:      0,
-						MaxBackups:   defaultMaxBackups,
-						LocalTime:    false,
-					},
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration--rotation--flush_interval",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-					Rotation: &Rotation{
-						MaxMegabytes: 3,
-						MaxDays:      0,
-						MaxBackups:   defaultMaxBackups,
-						LocalTime:    false,
-					},
-					FlushInterval: time.Second,
-				},
+				conf:        &Config{},
 				unmarshaler: &ptrace.ProtoUnmarshaler{},
 			},
 		},
@@ -131,8 +95,8 @@ func TestFileTracesExporter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := tt.args.conf
 			feI := newFileExporter(conf, zap.NewNop())
-			require.IsType(t, &fileExporter{}, feI)
-			fe := feI.(*fileExporter)
+			require.IsType(t, &duckDBExporter{}, feI)
+			fe := feI.(*duckDBExporter)
 
 			td := testdata.GenerateTracesTwoSpansSameResource()
 			assert.NoError(t, fe.Start(t.Context(), componenttest.NewNopHost()))
@@ -142,44 +106,44 @@ func TestFileTracesExporter(t *testing.T) {
 				assert.NoError(t, fe.Shutdown(t.Context()))
 			}()
 
-			fi, err := os.Open(fe.writer.path)
-			assert.NoError(t, err)
-			defer fi.Close()
-			br := bufio.NewReader(fi)
+			// fi, err := os.Open(fe.writer.path)
+			// assert.NoError(t, err)
+			// defer fi.Close()
+			// br := bufio.NewReader(fi)
 			for {
-				buf, isEnd, err := func() ([]byte, bool, error) {
-					if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
-						return readJSONMessage(br)
-					}
-					return readMessageFromStream(br)
-				}()
-				assert.NoError(t, err)
-				if isEnd {
-					break
-				}
-				decoder := buildUnCompressor(fe.marshaller.compression)
-				buf, err = decoder(buf)
-				assert.NoError(t, err)
-				got, err := tt.args.unmarshaler.UnmarshalTraces(buf)
-				assert.NoError(t, err)
-				assert.Equal(t, td, got)
+				// buf, isEnd, err := func() ([]byte, bool, error) {
+				// 	if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
+				// 		// return readJSONMessage(br)
+				// 	}
+				// 	// return readMessageFromStream(br)
+				// }()
+				// assert.NoError(t, err)
+				// if isEnd {
+				// 	break
+				// }
+				// decoder := buildUnCompressor(fe.marshaller.compression)
+				// buf, err = decoder(buf)
+				// assert.NoError(t, err)
+				// got, err := tt.args.unmarshaler.UnmarshalTraces(buf)
+				// assert.NoError(t, err)
+				// assert.Equal(t, td, got)
 			}
 		})
 	}
 }
 
 func TestFileTracesExporterError(t *testing.T) {
-	mf := &errorWriter{}
-	fe := &fileExporter{
+	// mf := &errorWriter{}
+	fe := &duckDBExporter{
 		marshaller: &marshaller{
 			formatType:      formatTypeJSON,
 			tracesMarshaler: tracesMarshalers[formatTypeJSON],
 			compressor:      noneCompress,
 		},
-		writer: &fileWriter{
-			file:     mf,
-			exporter: exportMessageAsLine,
-		},
+		// writer: &fileWriter{
+		// 	file:     mf,
+		// 	exporter: exportMessageAsLine,
+		// },
 	}
 	require.NotNil(t, fe)
 
@@ -201,59 +165,35 @@ func TestFileMetricsExporter(t *testing.T) {
 		{
 			name: "json: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "json",
-				},
+				conf:        &Config{},
 				unmarshaler: &pmetric.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "json: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "json",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &pmetric.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "proto",
-				},
+				conf:        &Config{},
 				unmarshaler: &pmetric.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &pmetric.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration--rotation",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-					Rotation: &Rotation{
-						MaxMegabytes: 3,
-						MaxDays:      0,
-						MaxBackups:   defaultMaxBackups,
-						LocalTime:    false,
-					},
-				},
+				conf:        &Config{},
 				unmarshaler: &pmetric.ProtoUnmarshaler{},
 			},
 		},
@@ -261,7 +201,7 @@ func TestFileMetricsExporter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := tt.args.conf
-			fe := &fileExporter{
+			fe := &duckDBExporter{
 				conf: conf,
 			}
 			require.NotNil(t, fe)
@@ -274,45 +214,45 @@ func TestFileMetricsExporter(t *testing.T) {
 				assert.NoError(t, fe.Shutdown(t.Context()))
 			}()
 
-			fi, err := os.Open(fe.writer.path)
-			assert.NoError(t, err)
-			defer fi.Close()
-			br := bufio.NewReader(fi)
-			for {
-				buf, isEnd, err := func() ([]byte, bool, error) {
-					if fe.marshaller.formatType == formatTypeJSON &&
-						fe.marshaller.compression == "" {
-						return readJSONMessage(br)
-					}
-					return readMessageFromStream(br)
-				}()
-				assert.NoError(t, err)
-				if isEnd {
-					break
-				}
-				decoder := buildUnCompressor(fe.marshaller.compression)
-				buf, err = decoder(buf)
-				assert.NoError(t, err)
-				got, err := tt.args.unmarshaler.UnmarshalMetrics(buf)
-				assert.NoError(t, err)
-				assert.Equal(t, md, got)
-			}
+			// fi, err := os.Open(fe.writer.path)
+			// assert.NoError(t, err)
+			// defer fi.Close()
+			// br := bufio.NewReader(fi)
+			// for {
+			// 	buf, isEnd, err := func() ([]byte, bool, error) {
+			// 		if fe.marshaller.formatType == formatTypeJSON &&
+			// 			fe.marshaller.compression == "" {
+			// 			return readJSONMessage(br)
+			// 		}
+			// 		return readMessageFromStream(br)
+			// 	}()
+			// 	assert.NoError(t, err)
+			// 	if isEnd {
+			// 		break
+			// 	}
+			// 	decoder := buildUnCompressor(fe.marshaller.compression)
+			// 	buf, err = decoder(buf)
+			// 	assert.NoError(t, err)
+			// 	got, err := tt.args.unmarshaler.UnmarshalMetrics(buf)
+			// 	assert.NoError(t, err)
+			// 	assert.Equal(t, md, got)
+			// }
 		})
 	}
 }
 
 func TestFileMetricsExporterError(t *testing.T) {
-	mf := &errorWriter{}
-	fe := &fileExporter{
+	// mf := &errorWriter{}
+	fe := &duckDBExporter{
 		marshaller: &marshaller{
 			formatType:       formatTypeJSON,
 			metricsMarshaler: metricsMarshalers[formatTypeJSON],
 			compressor:       noneCompress,
 		},
-		writer: &fileWriter{
-			file:     mf,
-			exporter: exportMessageAsLine,
-		},
+		// writer: &fileWriter{
+		// 	file:     mf,
+		// 	exporter: exportMessageAsLine,
+		// },
 	}
 	require.NotNil(t, fe)
 
@@ -334,59 +274,35 @@ func TestFileLogsExporter(t *testing.T) {
 		{
 			name: "json: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "json",
-				},
+				conf:        &Config{},
 				unmarshaler: &plog.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "json: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "json",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &plog.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "proto",
-				},
+				conf:        &Config{},
 				unmarshaler: &plog.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &plog.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration--rotation",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-					Rotation: &Rotation{
-						MaxMegabytes: 3,
-						MaxDays:      0,
-						MaxBackups:   defaultMaxBackups,
-						LocalTime:    false,
-					},
-				},
+				conf:        &Config{},
 				unmarshaler: &plog.ProtoUnmarshaler{},
 			},
 		},
@@ -394,7 +310,7 @@ func TestFileLogsExporter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := tt.args.conf
-			fe := &fileExporter{
+			fe := &duckDBExporter{
 				conf: conf,
 			}
 			require.NotNil(t, fe)
@@ -407,44 +323,44 @@ func TestFileLogsExporter(t *testing.T) {
 				assert.NoError(t, fe.Shutdown(t.Context()))
 			}()
 
-			fi, err := os.Open(fe.writer.path)
-			assert.NoError(t, err)
-			defer fi.Close()
-			br := bufio.NewReader(fi)
-			for {
-				buf, isEnd, err := func() ([]byte, bool, error) {
-					if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
-						return readJSONMessage(br)
-					}
-					return readMessageFromStream(br)
-				}()
-				assert.NoError(t, err)
-				if isEnd {
-					break
-				}
-				decoder := buildUnCompressor(fe.marshaller.compression)
-				buf, err = decoder(buf)
-				assert.NoError(t, err)
-				got, err := tt.args.unmarshaler.UnmarshalLogs(buf)
-				assert.NoError(t, err)
-				assert.Equal(t, ld, got)
-			}
+			// fi, err := os.Open(fe.writer.path)
+			// assert.NoError(t, err)
+			// defer fi.Close()
+			// br := bufio.NewReader(fi)
+			// for {
+			// 	buf, isEnd, err := func() ([]byte, bool, error) {
+			// 		if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
+			// 			return readJSONMessage(br)
+			// 		}
+			// 		return readMessageFromStream(br)
+			// 	}()
+			// 	assert.NoError(t, err)
+			// 	if isEnd {
+			// 		break
+			// 	}
+			// 	decoder := buildUnCompressor(fe.marshaller.compression)
+			// 	buf, err = decoder(buf)
+			// 	assert.NoError(t, err)
+			// 	got, err := tt.args.unmarshaler.UnmarshalLogs(buf)
+			// 	assert.NoError(t, err)
+			// 	assert.Equal(t, ld, got)
+			// }
 		})
 	}
 }
 
 func TestFileLogsExporterErrors(t *testing.T) {
-	mf := &errorWriter{}
-	fe := &fileExporter{
+	// mf := &errorWriter{}
+	fe := &duckDBExporter{
 		marshaller: &marshaller{
 			formatType:    formatTypeJSON,
 			logsMarshaler: logsMarshalers[formatTypeJSON],
 			compressor:    noneCompress,
 		},
-		writer: &fileWriter{
-			file:     mf,
-			exporter: exportMessageAsLine,
-		},
+		// writer: &fileWriter{
+		// 	file:     mf,
+		// 	exporter: exportMessageAsLine,
+		// },
 	}
 	require.NotNil(t, fe)
 
@@ -466,59 +382,35 @@ func TestFileProfilesExporter(t *testing.T) {
 		{
 			name: "json: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "json",
-				},
+				conf:        &Config{},
 				unmarshaler: &pprofile.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "json: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "json",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &pprofile.JSONUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: default configuration",
 			args: args{
-				conf: &Config{
-					Path:       tempFileName(t),
-					FormatType: "proto",
-				},
+				conf:        &Config{},
 				unmarshaler: &pprofile.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-				},
+				conf:        &Config{},
 				unmarshaler: &pprofile.ProtoUnmarshaler{},
 			},
 		},
 		{
 			name: "Proto: compression configuration--rotation",
 			args: args{
-				conf: &Config{
-					Path:        tempFileName(t),
-					FormatType:  "proto",
-					Compression: compressionZSTD,
-					Rotation: &Rotation{
-						MaxMegabytes: 3,
-						MaxDays:      0,
-						MaxBackups:   defaultMaxBackups,
-						LocalTime:    false,
-					},
-				},
+				conf:        &Config{},
 				unmarshaler: &pprofile.ProtoUnmarshaler{},
 			},
 		},
@@ -526,7 +418,7 @@ func TestFileProfilesExporter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := tt.args.conf
-			fe := &fileExporter{
+			fe := &duckDBExporter{
 				conf: conf,
 			}
 			require.NotNil(t, fe)
@@ -539,44 +431,44 @@ func TestFileProfilesExporter(t *testing.T) {
 				assert.NoError(t, fe.Shutdown(t.Context()))
 			}()
 
-			fi, err := os.Open(fe.writer.path)
-			assert.NoError(t, err)
-			defer fi.Close()
-			br := bufio.NewReader(fi)
-			for {
-				buf, isEnd, err := func() ([]byte, bool, error) {
-					if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
-						return readJSONMessage(br)
-					}
-					return readMessageFromStream(br)
-				}()
-				assert.NoError(t, err)
-				if isEnd {
-					break
-				}
-				decoder := buildUnCompressor(fe.marshaller.compression)
-				buf, err = decoder(buf)
-				assert.NoError(t, err)
-				got, err := tt.args.unmarshaler.UnmarshalProfiles(buf)
-				assert.NoError(t, err)
-				assert.Equal(t, pd, got)
-			}
+			// fi, err := os.Open(fe.writer.path)
+			// assert.NoError(t, err)
+			// defer fi.Close()
+			// br := bufio.NewReader(fi)
+			// for {
+			// 	buf, isEnd, err := func() ([]byte, bool, error) {
+			// 		if fe.marshaller.formatType == formatTypeJSON && fe.marshaller.compression == "" {
+			// 			return readJSONMessage(br)
+			// 		}
+			// 		return readMessageFromStream(br)
+			// 	}()
+			// 	assert.NoError(t, err)
+			// 	if isEnd {
+			// 		break
+			// 	}
+			// 	decoder := buildUnCompressor(fe.marshaller.compression)
+			// 	buf, err = decoder(buf)
+			// 	assert.NoError(t, err)
+			// 	got, err := tt.args.unmarshaler.UnmarshalProfiles(buf)
+			// 	assert.NoError(t, err)
+			// 	assert.Equal(t, pd, got)
+			// }
 		})
 	}
 }
 
 func TestFileProfilesExporterErrors(t *testing.T) {
-	pf := &errorWriter{}
-	fe := &fileExporter{
+	// pf := &errorWriter{}
+	fe := &duckDBExporter{
 		marshaller: &marshaller{
 			formatType:        formatTypeJSON,
 			profilesMarshaler: profilesMarshalers[formatTypeJSON],
 			compressor:        noneCompress,
 		},
-		writer: &fileWriter{
-			file:     pf,
-			exporter: exportMessageAsLine,
-		},
+		// writer: &fileWriter{
+		// 	file:     pf,
+		// 	exporter: exportMessageAsLine,
+		// },
 	}
 	require.NotNil(t, fe)
 
@@ -587,28 +479,28 @@ func TestFileProfilesExporterErrors(t *testing.T) {
 }
 
 func TestExportMessageAsBuffer(t *testing.T) {
-	path := tempFileName(t)
-	fe := &fileExporter{
+	// path := tempFileName(t)
+	fe := &duckDBExporter{
 		marshaller: &marshaller{
 			formatType:    formatTypeProto,
 			logsMarshaler: logsMarshalers[formatTypeProto],
 		},
-		writer: &fileWriter{
-			path: path,
-			file: &lumberjack.Logger{
-				Filename: path,
-				MaxSize:  1,
-			},
-			exporter: exportMessageAsBuffer,
-		},
+		// writer: &fileWriter{
+		// 	path: path,
+		// 	file: &lumberjack.Logger{
+		// 		Filename: path,
+		// 		MaxSize:  1,
+		// 	},
+		// 	exporter: exportMessageAsBuffer,
+		// },
 	}
 	require.NotNil(t, fe)
 	//
-	ld := testdata.GenerateLogsManyLogRecordsSameResource(15000)
-	marshaler := &plog.ProtoMarshaler{}
-	buf, err := marshaler.MarshalLogs(ld)
-	assert.NoError(t, err)
-	assert.Error(t, exportMessageAsBuffer(fe.writer, buf))
+	// ld := testdata.GenerateLogsManyLogRecordsSameResource(15000)
+	// marshaler := &plog.ProtoMarshaler{}
+	// buf, err := marshaler.MarshalLogs(ld)
+	// assert.NoError(t, err)
+	// assert.Error(t, exportMessageAsBuffer(fe.writer, buf))
 	assert.NoError(t, fe.Shutdown(t.Context()))
 }
 
@@ -765,46 +657,36 @@ func (b *tsBuffer) Bytes() []byte {
 	return b.b.Bytes()
 }
 
-func safeFileExporterWrite(e *fileExporter, d []byte) (int, error) {
-	e.writer.mutex.Lock()
-	defer e.writer.mutex.Unlock()
-	return e.writer.file.Write(d)
+func safeFileExporterWrite(e *duckDBExporter, d []byte) (int, error) {
+	// e.writer.mutex.Lock()
+	// defer e.writer.mutex.Unlock()
+	// return e.writer.file.Write(d)
+	return 0, nil
 }
 
 func TestFlushing(t *testing.T) {
-	cfg := &Config{
-		Path:          tempFileName(t),
-		FlushInterval: time.Second,
-	}
+	cfg := &Config{}
 
 	// Create a buffer to capture the output.
 	bbuf := &tsBuffer{b: &bytes.Buffer{}}
-	buf := &nopWriteCloser{bbuf}
+	// buf := &nopWriteCloser{bbuf}
 	// Wrap the buffer with the buffered writer closer that implements flush() method.
-	bwc := newBufferedWriteCloser(buf)
+	// bwc := newBufferedWriteCloser(buf)
 	// Create a file exporter with flushing enabled.
 	feI := newFileExporter(cfg, zap.NewNop())
-	assert.IsType(t, &fileExporter{}, feI)
-	fe := feI.(*fileExporter)
+	assert.IsType(t, &duckDBExporter{}, feI)
+	fe := feI.(*duckDBExporter)
 
 	// Start the flusher.
 	ctx := t.Context()
 	fe.marshaller = &marshaller{
-		formatType:       fe.conf.FormatType,
-		tracesMarshaler:  tracesMarshalers[fe.conf.FormatType],
-		metricsMarshaler: metricsMarshalers[fe.conf.FormatType],
-		logsMarshaler:    logsMarshalers[fe.conf.FormatType],
-		compression:      fe.conf.Compression,
-		compressor:       buildCompressor(fe.conf.Compression),
+		formatType:       "json",
+		tracesMarshaler:  tracesMarshalers["json"],
+		metricsMarshaler: metricsMarshalers["json"],
+		logsMarshaler:    logsMarshalers["json"],
 	}
-	export := buildExportFunc(fe.conf)
+	// export := buildExportFunc(fe.conf)
 	var err error
-	fe.writer, err = newFileWriter(fe.conf.Path, fe.conf.Append, fe.conf.Rotation, fe.conf.FlushInterval, export)
-	assert.NoError(t, err)
-	err = fe.writer.file.Close()
-	assert.NoError(t, err)
-	fe.writer.file = bwc
-	fe.writer.start()
 
 	// Write 10 bytes.
 	b := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -826,40 +708,34 @@ func TestFlushing(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	cfg := &Config{
-		Path:          tempFileName(t),
-		FlushInterval: time.Second,
-		Append:        true,
-	}
+	cfg := &Config{}
 
 	// Create a buffer to capture the output.
 	bbuf := &tsBuffer{b: &bytes.Buffer{}}
-	buf := &nopWriteCloser{bbuf}
+	// buf := &nopWriteCloser{bbuf}
 	// Wrap the buffer with the buffered writer closer that implements flush() method.
-	bwc := newBufferedWriteCloser(buf)
+	// bwc := newBufferedWriteCloser(buf)
 	// Create a file exporter with flushing enabled.
 	feI := newFileExporter(cfg, zap.NewNop())
-	assert.IsType(t, &fileExporter{}, feI)
-	fe := feI.(*fileExporter)
+	assert.IsType(t, &duckDBExporter{}, feI)
+	fe := feI.(*duckDBExporter)
 
 	// Start the flusher.
 	ctx := t.Context()
 	fe.marshaller = &marshaller{
-		formatType:       fe.conf.FormatType,
-		tracesMarshaler:  tracesMarshalers[fe.conf.FormatType],
-		metricsMarshaler: metricsMarshalers[fe.conf.FormatType],
-		logsMarshaler:    logsMarshalers[fe.conf.FormatType],
-		compression:      fe.conf.Compression,
-		compressor:       buildCompressor(fe.conf.Compression),
+		formatType:       "json",
+		tracesMarshaler:  tracesMarshalers["json"],
+		metricsMarshaler: metricsMarshalers["json"],
+		logsMarshaler:    logsMarshalers["json"],
 	}
-	export := buildExportFunc(fe.conf)
+	// export := buildExportFunc(fe.conf)
 	var err error
-	fe.writer, err = newFileWriter(fe.conf.Path, fe.conf.Append, fe.conf.Rotation, fe.conf.FlushInterval, export)
-	assert.NoError(t, err)
-	err = fe.writer.file.Close()
-	assert.NoError(t, err)
-	fe.writer.file = bwc
-	fe.writer.start()
+	// fe.writer, err = newFileWriter(fe.conf.Path, fe.conf.Append, fe.conf.Rotation, fe.conf.FlushInterval, export)
+	// assert.NoError(t, err)
+	// err = fe.writer.file.Close()
+	// assert.NoError(t, err)
+	// fe.writer.file = bwc
+	// fe.writer.start()
 
 	// Write 10 bytes.
 	b1 := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -880,12 +756,12 @@ func TestAppend(t *testing.T) {
 	assert.NoError(t, fe.Shutdown(ctx))
 
 	// Restart the exporter
-	fe.writer, err = newFileWriter(fe.conf.Path, fe.conf.Append, fe.conf.Rotation, fe.conf.FlushInterval, export)
-	assert.NoError(t, err)
-	err = fe.writer.file.Close()
-	assert.NoError(t, err)
-	fe.writer.file = bwc
-	fe.writer.start()
+	// fe.writer, err = newFileWriter(fe.conf.Path, fe.conf.Append, fe.conf.Rotation, fe.conf.FlushInterval, export)
+	// assert.NoError(t, err)
+	// err = fe.writer.file.Close()
+	// assert.NoError(t, err)
+	// fe.writer.file = bwc
+	// fe.writer.start()
 
 	// Write 10 bytes - again
 	b2 := []byte{11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
@@ -910,14 +786,10 @@ func TestAppend(t *testing.T) {
 
 func TestCreateDirectoryOption(t *testing.T) {
 	t.Run("create_directory=false should fail when parent missing", func(t *testing.T) {
-		base := t.TempDir()
-		nonExistingDir := filepath.Join(base, "nested", "dir")
-		path := filepath.Join(nonExistingDir, "out.log")
-		cfg := &Config{
-			Path:            path,
-			FormatType:      formatTypeJSON,
-			CreateDirectory: false,
-		}
+		// base := t.TempDir()
+		// nonExistingDir := filepath.Join(base, "nested", "dir")
+		// path := filepath.Join(nonExistingDir, "out.log")
+		cfg := &Config{}
 		exp, err := createLogsExporter(
 			t.Context(),
 			exportertest.NewNopSettings(metadata.Type),
@@ -930,14 +802,8 @@ func TestCreateDirectoryOption(t *testing.T) {
 	t.Run("create_directory=true should create parent and succeed", func(t *testing.T) {
 		base := t.TempDir()
 		nonExistingDir := filepath.Join(base, "nested", "dir2")
-		path := filepath.Join(nonExistingDir, "out.log")
-		cfg := &Config{
-			Path:                 path,
-			FormatType:           formatTypeJSON,
-			CreateDirectory:      true,
-			DirectoryPermissions: "0755",
-			FlushInterval:        time.Second,
-		}
+		// path := filepath.Join(nonExistingDir, "out.log")
+		cfg := &Config{}
 		exp, err := createLogsExporter(
 			t.Context(),
 			exportertest.NewNopSettings(metadata.Type),

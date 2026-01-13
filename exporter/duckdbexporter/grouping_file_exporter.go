@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package fileexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/golang-lru/v2/simplelru"
 	"go.opentelemetry.io/collector/component"
@@ -295,17 +296,17 @@ func (e *groupingFileExporter) Start(_ context.Context, host component.Host) err
 	}
 	export := buildExportFunc(e.conf)
 
-	pathParts := strings.Split(e.conf.Path, "*")
+	pathParts := strings.Split("/", "*")
 
 	e.pathPrefix = cleanPathPrefix(pathParts[0])
-	e.attribute = e.conf.GroupBy.ResourceAttribute
-	e.pathSuffix = pathParts[1]
-	e.maxOpenFiles = e.conf.GroupBy.MaxOpenFiles
+	e.attribute = "e.conf.GroupBy.ResourceAttribute"
+	e.pathSuffix = "pathParts[1]"
+	e.maxOpenFiles = 4
 	e.newFileWriter = func(path string) (*fileWriter, error) {
-		return newFileWriter(path, e.conf.Append, nil, e.conf.FlushInterval, export)
+		return newFileWriter(path, false, nil, time.Second, export)
 	}
 
-	writers, err := simplelru.NewLRU(e.conf.GroupBy.MaxOpenFiles, e.onEvict)
+	writers, err := simplelru.NewLRU(3, e.onEvict)
 	if err != nil {
 		return err
 	}
