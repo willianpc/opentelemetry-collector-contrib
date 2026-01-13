@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent"
 )
@@ -41,6 +42,7 @@ type DuckDBExporter interface {
 
 // NewFactory creates a factory for OTLP exporter.
 func NewFactory() exporter.Factory {
+
 	return xexporter.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
