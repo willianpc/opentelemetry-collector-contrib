@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter"
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 type duckDBExporter struct {
 	conf       *Config
 	marshaller *marshaller
-	// writer     *fileWriter
 }
 
 func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {

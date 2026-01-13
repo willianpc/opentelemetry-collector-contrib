@@ -1,13 +1,10 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter"
 
 import (
 	"context"
-	"io"
-	"os"
-	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -19,16 +16,12 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	"go.uber.org/zap"
-	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent"
 )
 
 const (
-	// the number of old log files to retain
-	defaultMaxBackups = 100
 
 	// the format of encoded telemetry data
 	formatTypeJSON  = "json"
@@ -36,10 +29,6 @@ const (
 
 	// the type of compression codec
 	compressionZSTD = "zstd"
-
-	defaultMaxOpenFiles = 100
-
-	defaultResourceAttribute = "fileexporter.path_segment"
 )
 
 type DuckDBExporter interface {
@@ -73,14 +62,14 @@ func createTracesExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Traces, error) {
-	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
+	ddbe := getOrCreateDuckDBExporter(cfg)
 	return exporterhelper.NewTraces(
 		ctx,
 		set,
 		cfg,
-		fe.consumeTraces,
-		exporterhelper.WithStart(fe.Start),
-		exporterhelper.WithShutdown(fe.Shutdown),
+		ddbe.consumeTraces,
+		exporterhelper.WithStart(ddbe.Start),
+		exporterhelper.WithShutdown(ddbe.Shutdown),
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 	)
 }
@@ -90,14 +79,14 @@ func createMetricsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
-	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
+	ddbe := getOrCreateDuckDBExporter(cfg)
 	return exporterhelper.NewMetrics(
 		ctx,
 		set,
 		cfg,
-		fe.consumeMetrics,
-		exporterhelper.WithStart(fe.Start),
-		exporterhelper.WithShutdown(fe.Shutdown),
+		ddbe.consumeMetrics,
+		exporterhelper.WithStart(ddbe.Start),
+		exporterhelper.WithShutdown(ddbe.Shutdown),
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 	)
 }
@@ -107,14 +96,14 @@ func createLogsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Logs, error) {
-	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
+	ddbe := getOrCreateDuckDBExporter(cfg)
 	return exporterhelper.NewLogs(
 		ctx,
 		set,
 		cfg,
-		fe.consumeLogs,
-		exporterhelper.WithStart(fe.Start),
-		exporterhelper.WithShutdown(fe.Shutdown),
+		ddbe.consumeLogs,
+		exporterhelper.WithStart(ddbe.Start),
+		exporterhelper.WithShutdown(ddbe.Shutdown),
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 	)
 }
@@ -124,14 +113,14 @@ func createProfilesExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (xexporter.Profiles, error) {
-	fe := getOrCreateDuckDBExporter(cfg, set.Logger)
+	ddbe := getOrCreateDuckDBExporter(cfg)
 	return xexporterhelper.NewProfiles(
 		ctx,
 		set,
 		cfg,
-		fe.consumeProfiles,
-		exporterhelper.WithStart(fe.Start),
-		exporterhelper.WithShutdown(fe.Shutdown),
+		ddbe.consumeProfiles,
+		exporterhelper.WithStart(ddbe.Start),
+		exporterhelper.WithShutdown(ddbe.Shutdown),
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 	)
 }
@@ -140,58 +129,20 @@ func createProfilesExporter(
 // or returns the already cached one. Caching is required because the factory is asked trace and
 // metric receivers separately when it gets CreateTraces() and CreateMetrics()
 // but they must not create separate objects, they must use one Exporter object per configuration.
-func getOrCreateDuckDBExporter(cfg component.Config, logger *zap.Logger) DuckDBExporter {
+func getOrCreateDuckDBExporter(cfg component.Config) DuckDBExporter {
 	conf := cfg.(*Config)
-	fe := exporters.GetOrAdd(cfg, func() component.Component {
-		return newFileExporter(conf, logger)
+	ddbe := exporters.GetOrAdd(cfg, func() component.Component {
+		return newDuckDBExporter(conf)
 	})
 
-	c := fe.Unwrap()
+	c := ddbe.Unwrap()
 	return c.(DuckDBExporter)
 }
 
-func newFileExporter(conf *Config, logger *zap.Logger) DuckDBExporter {
-	// if conf.GroupBy == nil || !conf.GroupBy.Enabled {
-	// 	return &duckDBExporter{
-	// 		conf: conf,
-	// 	}
-	// }
-
+func newDuckDBExporter(conf *Config) DuckDBExporter {
 	return &duckDBExporter{
 		conf: conf,
 	}
-}
-
-func newFileWriter(path string, shouldAppend bool, rotation *Rotation, flushInterval time.Duration, export exportFunc) (*fileWriter, error) {
-	var wc io.WriteCloser
-	if rotation == nil {
-		fileFlags := os.O_RDWR | os.O_CREATE
-		if shouldAppend {
-			fileFlags |= os.O_APPEND
-		} else {
-			fileFlags |= os.O_TRUNC
-		}
-		f, err := os.OpenFile(path, fileFlags, 0o644)
-		if err != nil {
-			return nil, err
-		}
-		wc = newBufferedWriteCloser(f)
-	} else {
-		wc = &lumberjack.Logger{
-			Filename:   path,
-			MaxSize:    rotation.MaxMegabytes,
-			MaxAge:     rotation.MaxDays,
-			MaxBackups: rotation.MaxBackups,
-			LocalTime:  rotation.LocalTime,
-		}
-	}
-
-	return &fileWriter{
-		path:          path,
-		file:          wc,
-		exporter:      export,
-		flushInterval: flushInterval,
-	}, nil
 }
 
 // This is the map of already created File exporters for particular configurations.

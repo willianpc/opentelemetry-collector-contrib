@@ -3,7 +3,6 @@ module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdb
 go 1.24.0
 
 require (
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/klauspost/compress v1.18.2
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.143.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.143.0
@@ -14,7 +13,6 @@ require (
 	go.opentelemetry.io/collector/confmap v1.49.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/confmap/xconfmap v0.143.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/consumer v1.49.1-0.20260109195331-fbd5d3f9faae
-	go.opentelemetry.io/collector/consumer/consumererror v0.143.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/exporter v1.49.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/exporter/exporterhelper v0.143.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.143.1-0.20260109195331-fbd5d3f9faae
@@ -24,8 +22,6 @@ require (
 	go.opentelemetry.io/collector/pdata v1.49.1-0.20260109195331-fbd5d3f9faae
 	go.opentelemetry.io/collector/pdata/pprofile v0.143.1-0.20260109195331-fbd5d3f9faae
 	go.uber.org/goleak v1.3.0
-	go.uber.org/zap v1.27.1
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
@@ -52,6 +48,7 @@ require (
 	go.opentelemetry.io/collector/client v1.49.1-0.20260109195331-fbd5d3f9faae // indirect
 	go.opentelemetry.io/collector/config/configoptional v1.49.1-0.20260109195331-fbd5d3f9faae // indirect
 	go.opentelemetry.io/collector/config/configretry v1.49.1-0.20260109195331-fbd5d3f9faae // indirect
+	go.opentelemetry.io/collector/consumer/consumererror v0.143.1-0.20260109195331-fbd5d3f9faae // indirect
 	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.143.1-0.20260109195331-fbd5d3f9faae // indirect
 	go.opentelemetry.io/collector/consumer/consumertest v0.143.1-0.20260109195331-fbd5d3f9faae // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.143.1-0.20260109195331-fbd5d3f9faae // indirect
@@ -71,6 +68,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect

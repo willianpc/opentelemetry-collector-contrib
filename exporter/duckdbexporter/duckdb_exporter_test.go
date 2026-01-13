@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/testdata"
@@ -94,7 +93,7 @@ func TestFileTracesExporter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf := tt.args.conf
-			feI := newFileExporter(conf, zap.NewNop())
+			feI := newDuckDBExporter(conf)
 			require.IsType(t, &duckDBExporter{}, feI)
 			fe := feI.(*duckDBExporter)
 
@@ -673,7 +672,7 @@ func TestFlushing(t *testing.T) {
 	// Wrap the buffer with the buffered writer closer that implements flush() method.
 	// bwc := newBufferedWriteCloser(buf)
 	// Create a file exporter with flushing enabled.
-	feI := newFileExporter(cfg, zap.NewNop())
+	feI := newDuckDBExporter(cfg)
 	assert.IsType(t, &duckDBExporter{}, feI)
 	fe := feI.(*duckDBExporter)
 
@@ -716,7 +715,7 @@ func TestAppend(t *testing.T) {
 	// Wrap the buffer with the buffered writer closer that implements flush() method.
 	// bwc := newBufferedWriteCloser(buf)
 	// Create a file exporter with flushing enabled.
-	feI := newFileExporter(cfg, zap.NewNop())
+	feI := newDuckDBExporter(cfg)
 	assert.IsType(t, &duckDBExporter{}, feI)
 	fe := feI.(*duckDBExporter)
 

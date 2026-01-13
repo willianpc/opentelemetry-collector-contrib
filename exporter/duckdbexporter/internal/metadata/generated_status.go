@@ -8,7 +8,7 @@ import (
 
 var (
 	Type      = component.MustNewType("duckdb")
-	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
+	ScopeName = "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter"
 )
 
 const (
