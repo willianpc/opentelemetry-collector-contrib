@@ -26,7 +26,7 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		return err
 	}
 
-	testDuckdb()
+	// testDuckdb()
 
 	fmt.Println("\033[3;36m duckdb :: \033[0m", string(buf))
 	return nil
