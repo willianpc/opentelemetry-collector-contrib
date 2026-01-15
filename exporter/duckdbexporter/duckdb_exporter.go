@@ -21,14 +21,39 @@ type duckDBExporter struct {
 }
 
 func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
-	buf, err := e.marshaller.marshalTraces(td)
+	_, err := e.marshaller.marshalTraces(td)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("\033[3;36m duckdb :: \033[0m Span count:", td.SpanCount())
+	for _, rs := range td.ResourceSpans().All() {
+
+		fmt.Println("resource spans schema url", rs.SchemaUrl())
+
+		for k, v := range rs.Resource().Attributes().All() {
+			fmt.Println("Resource-Attr[", k, " = ", v.AsString(), "]")
+		}
+
+		for _, ss := range rs.ScopeSpans().All() {
+			fmt.Println("\tScope Span >>", ss.Scope().Name(), ss.Scope().Version())
+
+			for _, span := range ss.Spans().All() {
+				fmt.Printf("\tSpan >> \n\t - Name=%s\n\t - Kind=%s\n\t - ID=%s\n\t - parent ID=%s\n\t - Trace ID=%s\n\n", span.Name(), span.Kind().String(), span.SpanID(), span.ParentSpanID(), span.TraceID().String())
+
+				for k, v := range span.Attributes().All() {
+					fmt.Println("\tSpan-attr[", k, "=", v.AsString(), "]")
+				}
+				fmt.Println()
+			}
+		}
+
+		fmt.Println("-------------------------------------")
+	}
+
 	// testDuckdb()
 
-	fmt.Println("\033[3;36m duckdb :: \033[0m", string(buf))
+	// fmt.Println("\033[3;36m duckdb :: \033[0m", string(buf))
 	return nil
 }
 

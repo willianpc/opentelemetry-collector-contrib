@@ -8,7 +8,7 @@ import (
 )
 
 func testDuckdb() {
-	db, err := sql.Open("duckdb", "vsfveidevefuncionar.db")
+	db, err := sql.Open("duckdb", "duckdb-test.db")
 
 	// ctx := context.Background()
 
@@ -80,11 +80,11 @@ func testDuckdb() {
 
 	_, err = db.Exec(`CREATE TABLE people (id INTEGER, name VARCHAR)`)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	_, err = db.Exec(`INSERT INTO people VALUES (42, 'John')`)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 
 	var (
