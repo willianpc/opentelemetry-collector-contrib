@@ -1,11 +1,11 @@
 BEGIN TRANSACTION;
 
-CREATE OR REPLACE TABLE spans (
+CREATE TABLE spans (
     name VARCHAR,
-    id VARCHAR primary key,
+    id VARCHAR PRIMARY KEY,
     parent_id VARCHAR,
     trace_id VARCHAR,
-    kind UINTEGER,
+    kind VARCHAR,
     schema_url VARCHAR,
     resources map(VARCHAR, VARCHAR),
     resource_scope VARCHAR,
@@ -15,12 +15,12 @@ CREATE OR REPLACE TABLE spans (
 
     event_times TIMESTAMP[],
     event_names VARCHAR[],
-    event_attrs map(VARCHAR, VARCHAR),
+    event_attrs map(VARCHAR, VARCHAR)[],
 
     link_trace_ids VARCHAR[],
     links_span_ids VARCHAR[],
-    links_trace_states UINTEGER[],
-    links_attrs map(VARCHAR, VARCHAR)
+    links_trace_states VARCHAR[],
+    links_attrs map(VARCHAR, VARCHAR)[]
 );
 
 COMMIT;

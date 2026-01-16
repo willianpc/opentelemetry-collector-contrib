@@ -6,7 +6,9 @@ package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collec
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/duckdb/duckdb-go/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -26,50 +28,110 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		return err
 	}
 
+	appender, fn, err := withAppender("test.db", "spans")
+
+	if err != nil {
+		fmt.Println("FAIL TO ACQUIRE APPEND", err)
+	} else {
+		defer func() {
+			appender.Flush()
+			// appender.Close()
+			// fmt.Println("appender flushed and closed")
+			fn()
+		}()
+	}
+
 	fmt.Println("\033[3;36m duckdb :: \033[0m Span count:", td.SpanCount())
 	for _, rs := range td.ResourceSpans().All() {
 
-		fmt.Println("resource spans schema url", rs.SchemaUrl())
-
-		for k, v := range rs.Resource().Attributes().All() {
-			fmt.Println("Resource-Attr[", k, " = ", v.AsString(), "]")
-		}
-
 		for _, ss := range rs.ScopeSpans().All() {
-			// fmt.Println("\tScope Span >>", ss.Scope().Name(), ss.Scope().Version())
 
 			for _, span := range ss.Spans().All() {
+				spanName := span.Name()
+				spanId := span.SpanID().String()
+				parentId := span.ParentSpanID().String()
+				traceId := span.TraceID().String()
+				kind := span.Kind().String()
+				schemaUrl := rs.SchemaUrl()
+				var resources = map[string]string{}
+				resourceScope := ss.Scope().Name() // todo: scope version
+				startTimestamp := span.StartTimestamp().AsTime()
+				endTimestamp := span.EndTimestamp().AsTime()
+				flags := span.Flags()
 
-				fmt.Printf("\tSpan >> \n\t - ScopeName=%s\n\t - ScopeVersion=%s\n\t   - Name=%s\n\t - Kind=%s\n\t - ID=%s\n\t - parent ID=%s\n\t - Trace ID=%s\n\n", ss.Scope().Name(), ss.Scope().Version(), span.Name(), span.Kind().String(), span.SpanID(), span.ParentSpanID(), span.TraceID().String())
+				for k, v := range rs.Resource().Attributes().All() {
+					resources[k] = v.AsString()
+				}
 
-				fmt.Println("\tSpan >> Flags", span.Flags())
-				fmt.Println("\tSpan >> Events:")
+				var eventTimes []time.Time
+				var eventNames []string
+				var eventAttrs = []duckdb.Map{}
 
 				for _, ev := range span.Events().All() {
-					fmt.Println("\t -- ", ev.Name(), "->", ev.Attributes().AsRaw())
+					eventTimes = append(eventTimes, ev.Timestamp().AsTime())
+					eventNames = append(eventNames, ev.Name())
+
+					var evAttrs = map[string]string{}
+
+					for k, v := range ev.Attributes().All() {
+						evAttrs[k] = v.AsString()
+					}
+
+					eventAttrs = append(eventAttrs, duckdbMapFromStringMap(evAttrs))
 				}
 
-				fmt.Println("\tSpan >> Links:")
+				var linkTraceIds []string
+				var linkSpanIds []string
+				var linkTraceStates []string
+				var linkAttrs = []duckdb.Map{}
 
 				for _, lnk := range span.Links().All() {
-					fmt.Println("\t -- link span id: ", lnk.SpanID())
+					linkTraceIds = append(linkTraceIds, lnk.TraceID().String())
+					linkSpanIds = append(linkSpanIds, lnk.SpanID().String())
+					linkTraceStates = append(linkTraceStates, lnk.TraceState().AsRaw())
+
+					var lnkAttr = map[string]string{}
+
+					for k, v := range lnk.Attributes().All() {
+						lnkAttr[k] = v.AsString()
+					}
+					linkAttrs = append(linkAttrs, duckdbMapFromStringMap(lnkAttr))
 				}
 
-				fmt.Println("\tSpan >> Status", span.Status().Code().String(), span.Status().Code(), span.Status().Message())
+				if appender != nil {
+					err = appender.AppendRow(
+						spanName,
+						spanId,
+						parentId,
+						traceId,
+						kind,
+						schemaUrl,
+						duckdbMapFromStringMap(resources),
+						resourceScope,
+						startTimestamp,
+						endTimestamp,
+						flags,
 
-				for k, v := range span.Attributes().All() {
-					fmt.Println("\tSpan-attr[", k, "=", v.AsString(), "]")
+						eventTimes,
+						eventNames,
+						eventAttrs,
+
+						linkTraceIds,
+						linkSpanIds,
+						linkTraceStates,
+						linkAttrs,
+					)
+
+					if err != nil {
+						return err
+					}
 				}
-				fmt.Println()
 			}
 		}
 
 		fmt.Println("-------------------------------------")
 	}
 
-	// testDuckdb()
-
-	// fmt.Println("\033[3;36m duckdb :: \033[0m", string(buf))
 	return nil
 }
 
@@ -139,5 +201,6 @@ func (e *duckDBExporter) Shutdown(context.Context) error {
 	// w := e.writer
 	// e.writer = nil
 	// return w.shutdown()
+	fmt.Println("duckdb exporter shutdown...")
 	return nil
 }
