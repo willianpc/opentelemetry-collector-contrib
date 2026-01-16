@@ -43,7 +43,8 @@ type DuckDBExporter interface {
 // NewFactory creates a factory for OTLP exporter.
 func NewFactory() exporter.Factory {
 
-	testDuckdb()
+	// testDuckdb()
+	withAppender("test.db", "spans")
 
 	return xexporter.NewFactory(
 		metadata.Type,

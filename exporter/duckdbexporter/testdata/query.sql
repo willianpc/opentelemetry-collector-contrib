@@ -1,28 +1,26 @@
--- TODO: events table with event_name, event_timestamp, event_attributes(map varchar, varchar)
-
 BEGIN TRANSACTION;
 
--- DROP TABLE IF EXISTS spans;
-
 CREATE OR REPLACE TABLE spans (
-    name varchar,
-    id varchar primary key,
-    parent_id varchar,
-    trace_id varchar,
-    kind uinteger,
-    schema_url varchar,
-    resources map(varchar, varchar),
-    resource_scope varchar,
-    start_timestamp timestamp,
-    end_timestamp timestamp,
-    flags uinteger,
-);
+    name VARCHAR,
+    id VARCHAR primary key,
+    parent_id VARCHAR,
+    trace_id VARCHAR,
+    kind UINTEGER,
+    schema_url VARCHAR,
+    resources map(VARCHAR, VARCHAR),
+    resource_scope VARCHAR,
+    start_timestamp TIMESTAMP,
+    end_timestamp TIMESTAMP,
+    flags UINTEGER,
 
-CREATE OR REPLACE TABLE events (
-    span_id varchar,
-    foreign key(span_id) references spans(id),
-    name varchar,
-    attributes map(varchar, varchar)
+    event_times TIMESTAMP[],
+    event_names VARCHAR[],
+    event_attrs map(VARCHAR, VARCHAR),
+
+    link_trace_ids VARCHAR[],
+    links_span_ids VARCHAR[],
+    links_trace_states UINTEGER[],
+    links_attrs map(VARCHAR, VARCHAR)
 );
 
 COMMIT;

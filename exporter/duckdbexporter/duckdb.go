@@ -1,55 +1,41 @@
 package duckdbexporter
 
 import (
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log"
+
+	"github.com/duckdb/duckdb-go/v2"
 )
+
+const createSpansTable = `CREATE TABLE %s (
+    name VARCHAR,
+    id VARCHAR primary key,
+    parent_id VARCHAR,
+    trace_id VARCHAR,
+    kind UINTEGER,
+    schema_url VARCHAR,
+    resources map(VARCHAR, VARCHAR),
+    resource_scope VARCHAR,
+    start_timestamp TIMESTAMP,
+    end_timestamp TIMESTAMP,
+    flags UINTEGER,
+
+    event_times TIMESTAMP[],
+    event_names VARCHAR[],
+    event_attrs map(VARCHAR, VARCHAR),
+
+    link_trace_ids VARCHAR[],
+    links_span_ids VARCHAR[],
+    links_trace_states UINTEGER[],
+    links_attrs map(VARCHAR, VARCHAR)
+);`
 
 func testDuckdb() {
 	db, err := sql.Open("duckdb", "duckdb-test.db")
-
-	// ctx := context.Background()
-
-	// sqlConn, err := db.Conn(ctx)
-
-	// if err != nil {
-	// 	fmt.Println("error sqlConn", err)
-	// } else {
-	// 	fmt.Println("tem sqlconn", sqlConn)
-	// }
-
-	// connector, err := duckdb.NewConnector("lale.db", nil)
-
-	// if err != nil {
-	// 	fmt.Println("!!!!! error on NewConnector", err)
-	// } else {
-	// 	defer connector.Close()
-
-	// 	fmt.Println("!!!!! connector ok")
-
-	// 	conn, err := connector.Connect(ctx)
-
-	// 	if err != nil {
-	// 		fmt.Println("error connector.Connect", err)
-	// 	} else {
-	// 		defer conn.Close()
-
-	// 		tbls, err := duckdb.GetTableNames(sqlConn, "", false)
-
-	// 		fmt.Println("TABLES??", tbls, err)
-
-	// 		appender, err := duckdb.NewAppenderFromConn(conn, "", "user")
-
-	// 		if err != nil {
-	// 			fmt.Println("error appender", err)
-	// 		} else {
-	// 			defer appender.Close()
-	// 			fmt.Println("!!!!deu tudo certo", appender)
-	// 		}
-	// 	}
-	// }
 
 	if err != nil {
 		log.Fatal(err)
@@ -102,4 +88,43 @@ func testDuckdb() {
 	// \033[3;36m duckdb :: \033[0m
 
 	fmt.Printf("\033[3;36m id: %d, name: %s \033[0m \n", id, name)
+}
+
+func withAppender(dbName string, traceTableName string) {
+	connector, err := duckdb.NewConnector(dbName, nil)
+
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	defer connector.Close()
+
+	conn, err := connector.Connect(context.Background())
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	defer conn.Close()
+
+	stmt, _ := conn.Prepare(fmt.Sprintf(createSpansTable, traceTableName))
+	_, err = stmt.Exec([]driver.Value{})
+
+	if err != nil {
+		fmt.Println("error on stmt", err)
+	}
+	defer stmt.Close()
+
+	// Retrieve appender from connection (note that you have to create the table 'test' beforehand).
+	appender, err := duckdb.NewAppenderFromConn(conn, "", traceTableName)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	defer func() {
+		appender.Close()
+		fmt.Println("appender closed, all good")
+	}()
+
+	// err = appender.AppendRow(1, "Mark")
+
+	// if err != nil {
+	// 	fmt.Println("appendRow failed", err)
+	// }
 }
