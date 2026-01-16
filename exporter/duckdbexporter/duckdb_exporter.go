@@ -36,10 +36,26 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		}
 
 		for _, ss := range rs.ScopeSpans().All() {
-			fmt.Println("\tScope Span >>", ss.Scope().Name(), ss.Scope().Version())
+			// fmt.Println("\tScope Span >>", ss.Scope().Name(), ss.Scope().Version())
 
 			for _, span := range ss.Spans().All() {
-				fmt.Printf("\tSpan >> \n\t - Name=%s\n\t - Kind=%s\n\t - ID=%s\n\t - parent ID=%s\n\t - Trace ID=%s\n\n", span.Name(), span.Kind().String(), span.SpanID(), span.ParentSpanID(), span.TraceID().String())
+
+				fmt.Printf("\tSpan >> \n\t - ScopeName=%s\n\t - ScopeVersion=%s\n\t   - Name=%s\n\t - Kind=%s\n\t - ID=%s\n\t - parent ID=%s\n\t - Trace ID=%s\n\n", ss.Scope().Name(), ss.Scope().Version(), span.Name(), span.Kind().String(), span.SpanID(), span.ParentSpanID(), span.TraceID().String())
+
+				fmt.Println("\tSpan >> Flags", span.Flags())
+				fmt.Println("\tSpan >> Events:")
+
+				for _, ev := range span.Events().All() {
+					fmt.Println("\t -- ", ev.Name(), "->", ev.Attributes().AsRaw())
+				}
+
+				fmt.Println("\tSpan >> Links:")
+
+				for _, lnk := range span.Links().All() {
+					fmt.Println("\t -- link span id: ", lnk.SpanID())
+				}
+
+				fmt.Println("\tSpan >> Status", span.Status().Code().String(), span.Status().Code(), span.Status().Message())
 
 				for k, v := range span.Attributes().All() {
 					fmt.Println("\tSpan-attr[", k, "=", v.AsString(), "]")
