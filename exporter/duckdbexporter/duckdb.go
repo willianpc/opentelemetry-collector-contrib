@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/duckdb/duckdb-go/v2"
+	"go.uber.org/zap"
 )
 
 const createSpansTable = `CREATE TABLE %s (
@@ -36,7 +37,7 @@ const createSpansTable = `CREATE TABLE %s (
 );
 `
 
-func withAppender(dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
+func withAppender(logger *zap.Logger, dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
 	connector, err := duckdb.NewConnector(dbName, nil)
 
 	if err != nil {
@@ -53,7 +54,7 @@ func withAppender(dbName string, traceTableName string) (*duckdb.Appender, func(
 	stmt, err := conn.Prepare(fmt.Sprintf(createSpansTable, traceTableName))
 
 	if err != nil {
-		fmt.Println("ERROR PREPARING STATEMENT", err)
+		logger.Error("Error preparing statement")
 	}
 
 	defer stmt.Close()
@@ -61,7 +62,7 @@ func withAppender(dbName string, traceTableName string) (*duckdb.Appender, func(
 	_, err = stmt.Exec([]driver.Value{})
 
 	if err != nil {
-		fmt.Println("error on stmt", err)
+		logger.Error(fmt.Sprintf("Error on stmt: %v", err))
 	}
 
 	// Retrieve appender from connection (note that you have to create the table 'test' beforehand).
@@ -94,16 +95,6 @@ func withAppender(dbName string, traceTableName string) (*duckdb.Appender, func(
 }
 
 func duckdbMapFromStringMap(m map[string]string) duckdb.Map {
-	ddbm := make(duckdb.Map)
-
-	for k, v := range m {
-		ddbm[k] = v
-	}
-
-	return ddbm
-}
-
-func duckdbMapFromAnyMap(m map[string]any) duckdb.Map {
 	ddbm := make(duckdb.Map)
 
 	for k, v := range m {

@@ -11,17 +11,16 @@ import (
 	"github.com/duckdb/duckdb-go/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	conventions "go.opentelemetry.io/otel/semconv/v1.38.0"
+	"go.uber.org/zap"
 )
 
-// duckDBExporter is the implementation of file exporter that writes telemetry data to a file
-type duckDBExporter struct {
+// tracesExporter is the implementation of file exporter that writes telemetry data to a file
+type tracesExporter struct {
 	conf       *Config
 	marshaller *marshaller
+	logger     *zap.Logger
 }
 
 func getServiceName(resAttr pcommon.Map) string {
@@ -32,26 +31,23 @@ func getServiceName(resAttr pcommon.Map) string {
 	return ""
 }
 
-func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
+func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
 	_, err := e.marshaller.marshalTraces(td)
 	if err != nil {
 		return err
 	}
 
-	appender, fn, err := withAppender("test.db", "spans")
+	appender, closeDbConnections, err := withAppender(e.logger, "test.db", "spans")
 
 	if err != nil {
-		fmt.Println("FAIL TO ACQUIRE APPEND", err)
+		e.logger.Error(fmt.Sprintf("Failed to acquire append: %v", err))
 	} else {
 		defer func() {
 			appender.Flush()
-			// appender.Close()
-			// fmt.Println("appender flushed and closed")
-			fn()
+			closeDbConnections()
 		}()
 	}
 
-	// fmt.Println("\033[3;36m duckdb :: \033[0m Span count:", td.SpanCount())
 	for _, rs := range td.ResourceSpans().All() {
 
 		for _, ss := range rs.ScopeSpans().All() {
@@ -111,6 +107,8 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					linkAttrs = append(linkAttrs, duckdbMapFromStringMap(lnkAttr))
 				}
 
+				e.logger.Info(fmt.Sprintf("Appending span %s of service %s", spanName, serviceName))
+
 				if appender != nil {
 					err = appender.AppendRow(
 						serviceName,
@@ -138,6 +136,7 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					)
 
 					if err != nil {
+						e.logger.Error(fmt.Sprintf("Error appending span: %v", err))
 						return err
 					}
 				}
@@ -148,35 +147,8 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 	return nil
 }
 
-func (e *duckDBExporter) consumeMetrics(_ context.Context, md pmetric.Metrics) error {
-	// buf, err := e.marshaller.marshalMetrics(md)
-	// if err != nil {
-	// 	return err
-	// }
-	// return e.writer.export(buf)
-	return nil
-}
-
-func (e *duckDBExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
-	// buf, err := e.marshaller.marshalLogs(ld)
-	// if err != nil {
-	// 	return err
-	// }
-	// return e.writer.export(buf)
-	return nil
-}
-
-func (e *duckDBExporter) consumeProfiles(_ context.Context, pd pprofile.Profiles) error {
-	// buf, err := e.marshaller.marshalProfiles(pd)
-	// if err != nil {
-	// 	return err
-	// }
-	// return e.writer.export(buf)
-	return nil
-}
-
 // Start starts the flush timer if set.
-func (e *duckDBExporter) Start(_ context.Context, host component.Host) error {
+func (e *tracesExporter) Start(_ context.Context, host component.Host) error {
 	var err error
 	e.marshaller, err = newMarshaller(e.conf, host)
 	if err != nil {
@@ -207,7 +179,7 @@ func (e *duckDBExporter) Start(_ context.Context, host component.Host) error {
 
 // Shutdown stops the exporter and is invoked during shutdown.
 // It stops the flush ticker if set.
-func (e *duckDBExporter) Shutdown(context.Context) error {
+func (e *tracesExporter) Shutdown(context.Context) error {
 	// if e.writer == nil {
 	// 	return nil
 	// }
@@ -216,4 +188,11 @@ func (e *duckDBExporter) Shutdown(context.Context) error {
 	// return w.shutdown()
 	fmt.Println("duckdb exporter shutdown...")
 	return nil
+}
+
+func newTracesExporter(logger *zap.Logger, conf *Config) TracesExporter {
+	return &tracesExporter{
+		conf:   conf,
+		logger: logger,
+	}
 }

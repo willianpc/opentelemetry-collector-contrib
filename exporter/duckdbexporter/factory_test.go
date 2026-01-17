@@ -94,28 +94,6 @@ func TestCreateLogsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCreateProfiles(t *testing.T) {
-	cfg := &Config{}
-	exp, err := createProfilesExporter(
-		t.Context(),
-		exportertest.NewNopSettings(metadata.Type),
-		cfg)
-	assert.NoError(t, err)
-	require.NotNil(t, exp)
-	assert.NoError(t, exp.Shutdown(t.Context()))
-}
-
-func TestCreateProfilesError(t *testing.T) {
-	cfg := &Config{}
-	e, err := createProfilesExporter(
-		t.Context(),
-		exportertest.NewNopSettings(metadata.Type),
-		cfg)
-	require.NoError(t, err)
-	err = e.Start(t.Context(), componenttest.NewNopHost())
-	assert.Error(t, err)
-}
-
 // func TestNewFileWriter(t *testing.T) {
 // 	type args struct {
 // 		cfg *Config
