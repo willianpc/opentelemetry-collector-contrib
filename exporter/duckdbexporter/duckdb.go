@@ -37,8 +37,8 @@ const createSpansTable = `CREATE TABLE %s (
 );
 `
 
-func acquireAppender(logger *zap.Logger, dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
-	connector, err := duckdb.NewConnector(dbName, nil)
+func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(), error) {
+	connector, err := duckdb.NewConnector(cfg.DatabaseName, nil)
 
 	if err != nil {
 		return nil, func() {}, err
@@ -51,7 +51,7 @@ func acquireAppender(logger *zap.Logger, dbName string, traceTableName string) (
 	}
 	// defer conn.Close()
 
-	stmt, err := conn.Prepare(fmt.Sprintf(createSpansTable, traceTableName))
+	stmt, err := conn.Prepare(fmt.Sprintf(createSpansTable, cfg.TracesTableName))
 
 	if err != nil {
 		logger.Error("Error preparing statement")
@@ -66,7 +66,7 @@ func acquireAppender(logger *zap.Logger, dbName string, traceTableName string) (
 	}
 
 	// Retrieve appender from connection (note that you have to create the table 'test' beforehand).
-	appender, err := duckdb.NewAppenderFromConn(conn, "", traceTableName)
+	appender, err := duckdb.NewAppenderFromConn(conn, "", cfg.TracesTableName)
 	if err != nil {
 		return nil, func() {}, err
 	}

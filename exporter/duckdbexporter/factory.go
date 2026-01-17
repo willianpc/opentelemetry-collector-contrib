@@ -59,7 +59,9 @@ func NewFactory() exporter.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Enabled: true,
+		DatabaseName:    "otel.duckdb",
+		TracesTableName: "otel_traces",
+		LogsTableName:   "otel_logs",
 	}
 }
 

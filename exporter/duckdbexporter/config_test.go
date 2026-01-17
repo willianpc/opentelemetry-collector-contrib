@@ -28,9 +28,9 @@ func TestLoadConfig(t *testing.T) {
 		errorMessage string
 	}{
 		{
-			id: component.NewIDWithName(metadata.Type, "2"),
+			id:       component.NewIDWithName(metadata.Type, "2"),
 			expected: &Config{
-				Enabled: true,
+				// Enabled: true,
 			},
 		},
 	}
@@ -58,7 +58,7 @@ func TestLoadConfig(t *testing.T) {
 func TestDirectoryPermissionsWithoutCreateDirectory(t *testing.T) {
 	t.Parallel()
 	cfg := &Config{
-		Enabled: true,
+		// Enabled: true,
 	}
 	err := cfg.Validate()
 	require.Error(t, err)

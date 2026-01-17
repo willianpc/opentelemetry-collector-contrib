@@ -10,9 +10,11 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
-// Config defines configuration for file exporter.
 type Config struct {
-	Enabled                    bool  `mapstructure:"enabled"`
+	DatabaseName    string `mapstructure:"database_name"`
+	LogsTableName   string `mapstructure:"logs_table_name"`
+	TracesTableName string `mapstructure:"traces_table_name"`
+
 	directoryPermissionsParsed int64 `mapstructure:"-"`
 }
 

@@ -22,7 +22,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 
 func TestCreateMetricsError(t *testing.T) {
 	cfg := &Config{
-		Enabled: true,
+		// Enabled: true,
 	}
 	e, err := createMetricsExporter(
 		t.Context(),
@@ -35,7 +35,7 @@ func TestCreateMetricsError(t *testing.T) {
 
 func TestCreateMetrics(t *testing.T) {
 	cfg := &Config{
-		Enabled: true,
+		// Enabled: true,
 	}
 	exp, err := createMetricsExporter(
 		t.Context(),
@@ -48,7 +48,7 @@ func TestCreateMetrics(t *testing.T) {
 
 func TestCreateTraces(t *testing.T) {
 	cfg := &Config{
-		Enabled: true,
+		// Enabled: true,
 	}
 	exp, err := createTracesExporter(
 		t.Context(),
@@ -61,7 +61,7 @@ func TestCreateTraces(t *testing.T) {
 
 func TestCreateTracesError(t *testing.T) {
 	cfg := &Config{
-		Enabled: true,
+		// Enabled: true,
 	}
 	e, err := createTracesExporter(
 		t.Context(),

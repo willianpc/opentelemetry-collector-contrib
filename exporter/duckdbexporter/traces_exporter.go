@@ -28,10 +28,11 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		return err
 	}
 
-	appender, closeDbConnections, err := acquireAppender(e.logger, "test.db", "spans")
+	appender, closeDbConnections, err := acquireAppender(e.conf, e.logger)
 
 	if err != nil {
-		e.logger.Error(fmt.Sprintf("Failed to acquire append: %v", err))
+		e.logger.Error(fmt.Sprintf("Failed to acquire appender: %v", err))
+		return fmt.Errorf("Failed to acquire appender: %v", err)
 	} else {
 		defer func() {
 			appender.Flush()
@@ -40,9 +41,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 	}
 
 	for _, rs := range td.ResourceSpans().All() {
-
 		for _, ss := range rs.ScopeSpans().All() {
-
 			for _, span := range ss.Spans().All() {
 				serviceName := internal.GetServiceName(rs.Resource().Attributes())
 				spanName := span.Name()
@@ -100,36 +99,34 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 
 				e.logger.Info(fmt.Sprintf("Appending span %s of service %s", spanName, serviceName))
 
-				if appender != nil {
-					err = appender.AppendRow(
-						serviceName,
-						spanName,
-						spanId,
-						parentId,
-						traceId,
-						kind,
-						schemaUrl,
-						duckdbMapFromStringMap(resourceAttributes),
-						scopeName,
-						scopeVersion,
-						startTimestamp,
-						endTimestamp,
-						flags,
-						statusCode,
-						statusMessage,
-						eventTimes,
-						eventNames,
-						eventAttrs,
-						linkTraceIds,
-						linkSpanIds,
-						linkTraceStates,
-						linkAttrs,
-					)
+				err = appender.AppendRow(
+					serviceName,
+					spanName,
+					spanId,
+					parentId,
+					traceId,
+					kind,
+					schemaUrl,
+					duckdbMapFromStringMap(resourceAttributes),
+					scopeName,
+					scopeVersion,
+					startTimestamp,
+					endTimestamp,
+					flags,
+					statusCode,
+					statusMessage,
+					eventTimes,
+					eventNames,
+					eventAttrs,
+					linkTraceIds,
+					linkSpanIds,
+					linkTraceStates,
+					linkAttrs,
+				)
 
-					if err != nil {
-						e.logger.Error(fmt.Sprintf("Error appending span: %v", err))
-						return err
-					}
+				if err != nil {
+					e.logger.Error(fmt.Sprintf("Error appending span: %v", err))
+					return fmt.Errorf("Error appending span: %v", err)
 				}
 			}
 		}
@@ -177,7 +174,6 @@ func (e *tracesExporter) Shutdown(context.Context) error {
 	// w := e.writer
 	// e.writer = nil
 	// return w.shutdown()
-	fmt.Println("duckdb exporter shutdown...")
 	return nil
 }
 
