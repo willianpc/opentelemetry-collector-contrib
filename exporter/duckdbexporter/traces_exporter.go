@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	conventions "go.opentelemetry.io/otel/semconv/v1.38.0"
 	"go.uber.org/zap"
 )
 
@@ -23,21 +22,13 @@ type tracesExporter struct {
 	logger     *zap.Logger
 }
 
-func getServiceName(resAttr pcommon.Map) string {
-	if v, ok := resAttr.Get(string(conventions.ServiceNameKey)); ok {
-		return v.AsString()
-	}
-
-	return ""
-}
-
 func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
 	_, err := e.marshaller.marshalTraces(td)
 	if err != nil {
 		return err
 	}
 
-	appender, closeDbConnections, err := withAppender(e.logger, "test.db", "spans")
+	appender, closeDbConnections, err := acquireAppender(e.logger, "test.db", "spans")
 
 	if err != nil {
 		e.logger.Error(fmt.Sprintf("Failed to acquire append: %v", err))
@@ -53,7 +44,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		for _, ss := range rs.ScopeSpans().All() {
 
 			for _, span := range ss.Spans().All() {
-				serviceName := getServiceName(rs.Resource().Attributes())
+				serviceName := internal.GetServiceName(rs.Resource().Attributes())
 				spanName := span.Name()
 				spanId := span.SpanID().String()
 				parentId := span.ParentSpanID().String()

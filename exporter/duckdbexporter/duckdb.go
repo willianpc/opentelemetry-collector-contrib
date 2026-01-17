@@ -37,7 +37,7 @@ const createSpansTable = `CREATE TABLE %s (
 );
 `
 
-func withAppender(logger *zap.Logger, dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
+func acquireAppender(logger *zap.Logger, dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
 	connector, err := duckdb.NewConnector(dbName, nil)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func withAppender(logger *zap.Logger, dbName string, traceTableName string) (*du
 	_, err = stmt.Exec([]driver.Value{})
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("Error on stmt: %v", err))
+		logger.Info(fmt.Sprintf("Error on stmt: %v", err))
 	}
 
 	// Retrieve appender from connection (note that you have to create the table 'test' beforehand).
@@ -73,22 +73,16 @@ func withAppender(logger *zap.Logger, dbName string, traceTableName string) (*du
 	// defer appender.Close()
 
 	return appender, func() {
-		err = conn.Close()
-
-		if err != nil {
-			panic(err)
+		if err = conn.Close(); err != nil {
+			logger.Error(fmt.Sprintf("Error closing driver.Conn: %v", err))
 		}
 
-		err = connector.Close()
-
-		if err != nil {
-			panic(err)
+		if err = connector.Close(); err != nil {
+			logger.Error(fmt.Sprintf("Error closing *duckdb.Connector: %v", err))
 		}
 
-		err = appender.Close()
-
-		if err != nil {
-			panic(err)
+		if err = appender.Close(); err != nil {
+			logger.Error(fmt.Sprintf("Error closing *duckdb.Appender: %v", err))
 		}
 
 	}, nil
