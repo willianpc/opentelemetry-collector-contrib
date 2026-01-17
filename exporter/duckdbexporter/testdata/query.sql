@@ -1,6 +1,7 @@
 BEGIN TRANSACTION;
 
 CREATE TABLE spans (
+    service_name VARCHAR,
     name VARCHAR,
     id VARCHAR PRIMARY KEY,
     parent_id VARCHAR,
@@ -8,10 +9,13 @@ CREATE TABLE spans (
     kind VARCHAR,
     schema_url VARCHAR,
     resources map(VARCHAR, VARCHAR),
-    resource_scope VARCHAR,
+    scope_name VARCHAR,
+    scope_version VARCHAR,
     start_timestamp TIMESTAMP,
     end_timestamp TIMESTAMP,
     flags UINTEGER,
+    status_code VARCHAR,
+    status_message VARCHAR,
 
     event_times TIMESTAMP[],
     event_names VARCHAR[],

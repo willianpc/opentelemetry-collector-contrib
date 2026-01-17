@@ -9,6 +9,7 @@ import (
 )
 
 const createSpansTable = `CREATE TABLE %s (
+	service_name VARCHAR,
     name VARCHAR,
     id VARCHAR primary key,
     parent_id VARCHAR,
@@ -16,10 +17,13 @@ const createSpansTable = `CREATE TABLE %s (
     kind VARCHAR,
     schema_url VARCHAR,
     resources map(VARCHAR, VARCHAR),
-    resource_scope VARCHAR,
+    scope_name VARCHAR,
+    scope_version VARCHAR,
     start_timestamp TIMESTAMP,
 	end_timestamp TIMESTAMP,
     flags UINTEGER,
+    status_code VARCHAR,
+    status_message VARCHAR,
 
 	event_times TIMESTAMP[],
     event_names VARCHAR[],
@@ -33,10 +37,7 @@ const createSpansTable = `CREATE TABLE %s (
 `
 
 func withAppender(dbName string, traceTableName string) (*duckdb.Appender, func(), error) {
-	fmt.Println("WITH APPENDER START")
-
 	connector, err := duckdb.NewConnector(dbName, nil)
-	fmt.Println("nem deve chegar aqui")
 
 	if err != nil {
 		return nil, func() {}, err

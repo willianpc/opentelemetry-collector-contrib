@@ -10,16 +10,26 @@ import (
 
 	"github.com/duckdb/duckdb-go/v2"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	conventions "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
 
 // duckDBExporter is the implementation of file exporter that writes telemetry data to a file
 type duckDBExporter struct {
 	conf       *Config
 	marshaller *marshaller
+}
+
+func getServiceName(resAttr pcommon.Map) string {
+	if v, ok := resAttr.Get(string(conventions.ServiceNameKey)); ok {
+		return v.AsString()
+	}
+
+	return ""
 }
 
 func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
@@ -41,26 +51,30 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		}()
 	}
 
-	fmt.Println("\033[3;36m duckdb :: \033[0m Span count:", td.SpanCount())
+	// fmt.Println("\033[3;36m duckdb :: \033[0m Span count:", td.SpanCount())
 	for _, rs := range td.ResourceSpans().All() {
 
 		for _, ss := range rs.ScopeSpans().All() {
 
 			for _, span := range ss.Spans().All() {
+				serviceName := getServiceName(rs.Resource().Attributes())
 				spanName := span.Name()
 				spanId := span.SpanID().String()
 				parentId := span.ParentSpanID().String()
 				traceId := span.TraceID().String()
 				kind := span.Kind().String()
 				schemaUrl := rs.SchemaUrl()
-				var resources = map[string]string{}
-				resourceScope := ss.Scope().Name() // todo: scope version
+				var resourceAttributes = map[string]string{}
+				scopeName := ss.Scope().Name()
+				scopeVersion := ss.Scope().Version()
 				startTimestamp := span.StartTimestamp().AsTime()
 				endTimestamp := span.EndTimestamp().AsTime()
 				flags := span.Flags()
+				statusCode := span.Status().Code().String()
+				statusMessage := span.Status().Message()
 
 				for k, v := range rs.Resource().Attributes().All() {
-					resources[k] = v.AsString()
+					resourceAttributes[k] = v.AsString()
 				}
 
 				var eventTimes []time.Time
@@ -91,7 +105,6 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					linkTraceStates = append(linkTraceStates, lnk.TraceState().AsRaw())
 
 					var lnkAttr = map[string]string{}
-
 					for k, v := range lnk.Attributes().All() {
 						lnkAttr[k] = v.AsString()
 					}
@@ -100,22 +113,24 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 
 				if appender != nil {
 					err = appender.AppendRow(
+						serviceName,
 						spanName,
 						spanId,
 						parentId,
 						traceId,
 						kind,
 						schemaUrl,
-						duckdbMapFromStringMap(resources),
-						resourceScope,
+						duckdbMapFromStringMap(resourceAttributes),
+						scopeName,
+						scopeVersion,
 						startTimestamp,
 						endTimestamp,
 						flags,
-
+						statusCode,
+						statusMessage,
 						eventTimes,
 						eventNames,
 						eventAttrs,
-
 						linkTraceIds,
 						linkSpanIds,
 						linkTraceStates,
@@ -128,8 +143,6 @@ func (e *duckDBExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 				}
 			}
 		}
-
-		fmt.Println("-------------------------------------")
 	}
 
 	return nil
