@@ -29,7 +29,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 		return err
 	}
 
-	appender, closeDbConnections, err := acquireAppender(e.conf, e.logger)
+	appender, closeDbConnections, err := acquireAppenderForTable(e.conf, e.logger, tracesTable)
 
 	if err != nil {
 		e.logger.Error(fmt.Sprintf("Failed to acquire appender: %v", err))
@@ -51,7 +51,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 				traceId := span.TraceID().String()
 				kind := span.Kind().String()
 				schemaUrl := rs.SchemaUrl()
-				resourceAttributes := map[string]string{}
+				resourceAttributes := internal.DuckDbMapFromIterable(rs.Resource().Attributes().All())
 				scopeName := ss.Scope().Name()
 				scopeVersion := ss.Scope().Version()
 				startTimestamp := span.StartTimestamp().AsTime()
@@ -60,10 +60,6 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 				statusCode := span.Status().Code().String()
 				statusMessage := span.Status().Message()
 
-				for k, v := range rs.Resource().Attributes().All() {
-					resourceAttributes[k] = v.AsString()
-				}
-
 				var eventTimes []time.Time
 				var eventNames []string
 				eventAttrs := []duckdb.Map{}
@@ -71,15 +67,8 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 				for _, ev := range span.Events().All() {
 					eventTimes = append(eventTimes, ev.Timestamp().AsTime())
 					eventNames = append(eventNames, ev.Name())
-
-					evAttrs := map[string]string{}
-
-					for k, v := range ev.Attributes().All() {
-						evAttrs[k] = v.AsString()
-					}
-
-					// todo: use internal DuckDbMapFromIterable
-					eventAttrs = append(eventAttrs, duckdbMapFromStringMap(evAttrs))
+					evAttrs := internal.DuckDbMapFromIterable(ev.Attributes().All())
+					eventAttrs = append(eventAttrs, evAttrs)
 				}
 
 				var linkTraceIds []string
@@ -91,12 +80,8 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					linkTraceIds = append(linkTraceIds, lnk.TraceID().String())
 					linkSpanIds = append(linkSpanIds, lnk.SpanID().String())
 					linkTraceStates = append(linkTraceStates, lnk.TraceState().AsRaw())
-
-					lnkAttr := map[string]string{}
-					for k, v := range lnk.Attributes().All() {
-						lnkAttr[k] = v.AsString()
-					}
-					linkAttrs = append(linkAttrs, duckdbMapFromStringMap(lnkAttr))
+					lnkAttr := internal.DuckDbMapFromIterable(lnk.Attributes().All())
+					linkAttrs = append(linkAttrs, lnkAttr)
 				}
 
 				e.logger.Info(fmt.Sprintf("Appending span %s of service %s", spanName, serviceName))
@@ -109,7 +94,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					traceId,
 					kind,
 					schemaUrl,
-					duckdbMapFromStringMap(resourceAttributes),
+					resourceAttributes,
 					scopeName,
 					scopeVersion,
 					startTimestamp,

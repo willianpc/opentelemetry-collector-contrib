@@ -9,7 +9,13 @@ import (
 	"go.uber.org/zap"
 )
 
-const createSpansTable = `CREATE TABLE %s (
+const (
+	tracesTable = iota
+	logsTable
+	metricsTable
+)
+
+const createTrcesTable = `CREATE TABLE %s (
 	service_name VARCHAR,
     name VARCHAR,
     id VARCHAR primary key,
@@ -37,7 +43,27 @@ const createSpansTable = `CREATE TABLE %s (
 );
 `
 
-func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(), error) {
+const createLogsTable = `CREATE TABLE %s (
+	span_id VARCHAR,
+	trace_id VARCHAR,
+	scope VARCHAR,
+	timestamp TIMESTAMP
+);`
+
+func acquireAppenderForTable(cfg *Config, logger *zap.Logger, table int) (*duckdb.Appender, func(), error) {
+	var tableName, createTableQuery string
+
+	switch table {
+	case tracesTable:
+		tableName = cfg.TracesTableName
+		createTableQuery = createTrcesTable
+	case logsTable:
+		tableName = cfg.LogsTableName
+		createTableQuery = createLogsTable
+	default:
+		tableName = ""
+	}
+
 	connector, err := duckdb.NewConnector(cfg.DatabaseName, nil)
 	if err != nil {
 		return nil, func() {}, err
@@ -50,7 +76,7 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 	}
 	// defer conn.Close()
 
-	stmt, err := conn.Prepare(fmt.Sprintf(createSpansTable, cfg.TracesTableName))
+	stmt, err := conn.Prepare(fmt.Sprintf(createTableQuery, tableName))
 	if err != nil {
 		logger.Error("Error preparing statement")
 	}
@@ -63,7 +89,7 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 	}
 
 	// Retrieve appender from connection (note that you have to create the table beforehand).
-	appender, err := duckdb.NewAppenderFromConn(conn, "", cfg.TracesTableName)
+	appender, err := duckdb.NewAppenderFromConn(conn, "", tableName)
 	if err != nil {
 		return nil, func() {}, err
 	}
@@ -83,14 +109,4 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 	}
 
 	return appender, closeDbConnectionsFn, nil
-}
-
-func duckdbMapFromStringMap(m map[string]string) duckdb.Map {
-	ddbm := make(duckdb.Map)
-
-	for k, v := range m {
-		ddbm[k] = v
-	}
-
-	return ddbm
 }

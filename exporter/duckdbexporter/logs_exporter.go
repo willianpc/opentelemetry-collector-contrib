@@ -20,6 +20,18 @@ type logsExporter struct {
 
 func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
 
+	appender, closeDbConnections, err := acquireAppenderForTable(e.conf, e.logger, logsTable)
+
+	if err != nil {
+		e.logger.Error(fmt.Sprintf("Failed to acquire appender: %v", err))
+		return fmt.Errorf("Failed to acquire appender: %v", err)
+	} else {
+		defer func() {
+			appender.Flush()
+			closeDbConnections()
+		}()
+	}
+
 	for _, rl := range ld.ResourceLogs().All() {
 		resourceAttrs := rl.Resource().Attributes().AsRaw()
 		fmt.Println("resource log attrs", resourceAttrs)
@@ -45,6 +57,18 @@ func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
 				fmt.Printf("log flags: %d\n, attrs: %v\n, body: %s\n, event name: %s\n, observed timestamp: %v\n, span id: %s\n, trace id: %s\n, sev number: %s\n, sev text: %s\n, timestamp: %v\n",
 					flags, logAttrs, logBody, logEventName, logObsTimestamp, logSpanId, logTraceId, logSeverityNumber, logSeverityText, logTimestamp,
 				)
+
+				err = appender.AppendRow(
+					logSpanId,
+					logTraceId,
+					scopeName,
+					logTimestamp,
+				)
+
+				if err != nil {
+					e.logger.Error(fmt.Sprintf("Error appending logs: %v", err))
+					return fmt.Errorf("Error appending logs: %v", err)
+				}
 			}
 		}
 	}
