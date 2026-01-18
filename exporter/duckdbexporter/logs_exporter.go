@@ -18,7 +18,37 @@ type logsExporter struct {
 	logger     *zap.Logger
 }
 
-func (e *logsExporter) consumeLogs(_ context.Context, md plog.Logs) error {
+func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
+
+	for _, rl := range ld.ResourceLogs().All() {
+		resourceAttrs := rl.Resource().Attributes().AsRaw()
+		fmt.Println("resource log attrs", resourceAttrs)
+
+		for _, scope := range rl.ScopeLogs().All() {
+			scopeName := scope.Scope().Name()
+			scopeVersion := scope.Scope().Version()
+
+			fmt.Println("scope name and version:", scopeName, scopeVersion)
+
+			for _, log := range scope.LogRecords().All() {
+				flags := log.Flags()
+				logAttrs := log.Attributes().AsRaw()
+				logBody := log.Body().AsString()
+				logEventName := log.EventName()
+				logObsTimestamp := log.ObservedTimestamp().AsTime()
+				logSpanId := log.SpanID().String()
+				logTraceId := log.TraceID().String()
+				logSeverityNumber := log.SeverityNumber().String()
+				logSeverityText := log.SeverityText()
+				logTimestamp := log.Timestamp().AsTime()
+
+				fmt.Printf("log flags: %d\n, attrs: %v\n, body: %s\n, event name: %s\n, observed timestamp: %v\n, span id: %s\n, trace id: %s\n, sev number: %s\n, sev text: %s\n, timestamp: %v\n",
+					flags, logAttrs, logBody, logEventName, logObsTimestamp, logSpanId, logTraceId, logSeverityNumber, logSeverityText, logTimestamp,
+				)
+			}
+		}
+	}
+
 	// buf, err := e.marshaller.marshalMetrics(md)
 	// if err != nil {
 	// 	return err

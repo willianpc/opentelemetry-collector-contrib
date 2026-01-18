@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/duckdb/duckdb-go/v2"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 )
 
 // tracesExporter is the implementation of file exporter that writes telemetry data to a file
@@ -50,7 +51,7 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 				traceId := span.TraceID().String()
 				kind := span.Kind().String()
 				schemaUrl := rs.SchemaUrl()
-				var resourceAttributes = map[string]string{}
+				resourceAttributes := map[string]string{}
 				scopeName := ss.Scope().Name()
 				scopeVersion := ss.Scope().Version()
 				startTimestamp := span.StartTimestamp().AsTime()
@@ -65,32 +66,33 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 
 				var eventTimes []time.Time
 				var eventNames []string
-				var eventAttrs = []duckdb.Map{}
+				eventAttrs := []duckdb.Map{}
 
 				for _, ev := range span.Events().All() {
 					eventTimes = append(eventTimes, ev.Timestamp().AsTime())
 					eventNames = append(eventNames, ev.Name())
 
-					var evAttrs = map[string]string{}
+					evAttrs := map[string]string{}
 
 					for k, v := range ev.Attributes().All() {
 						evAttrs[k] = v.AsString()
 					}
 
+					// todo: use internal DuckDbMapFromIterable
 					eventAttrs = append(eventAttrs, duckdbMapFromStringMap(evAttrs))
 				}
 
 				var linkTraceIds []string
 				var linkSpanIds []string
 				var linkTraceStates []string
-				var linkAttrs = []duckdb.Map{}
+				linkAttrs := []duckdb.Map{}
 
 				for _, lnk := range span.Links().All() {
 					linkTraceIds = append(linkTraceIds, lnk.TraceID().String())
 					linkSpanIds = append(linkSpanIds, lnk.SpanID().String())
 					linkTraceStates = append(linkTraceStates, lnk.TraceState().AsRaw())
 
-					var lnkAttr = map[string]string{}
+					lnkAttr := map[string]string{}
 					for k, v := range lnk.Attributes().All() {
 						lnkAttr[k] = v.AsString()
 					}
@@ -123,7 +125,6 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 					linkTraceStates,
 					linkAttrs,
 				)
-
 				if err != nil {
 					e.logger.Error(fmt.Sprintf("Error appending span: %v", err))
 					return fmt.Errorf("Error appending span: %v", err)

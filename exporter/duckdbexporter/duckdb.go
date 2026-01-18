@@ -39,7 +39,6 @@ const createSpansTable = `CREATE TABLE %s (
 
 func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(), error) {
 	connector, err := duckdb.NewConnector(cfg.DatabaseName, nil)
-
 	if err != nil {
 		return nil, func() {}, err
 	}
@@ -52,7 +51,6 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 	// defer conn.Close()
 
 	stmt, err := conn.Prepare(fmt.Sprintf(createSpansTable, cfg.TracesTableName))
-
 	if err != nil {
 		logger.Error("Error preparing statement")
 	}
@@ -60,19 +58,17 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 	defer stmt.Close()
 
 	_, err = stmt.Exec([]driver.Value{})
-
 	if err != nil {
 		logger.Info(fmt.Sprintf("Error on stmt: %v", err))
 	}
 
-	// Retrieve appender from connection (note that you have to create the table 'test' beforehand).
+	// Retrieve appender from connection (note that you have to create the table beforehand).
 	appender, err := duckdb.NewAppenderFromConn(conn, "", cfg.TracesTableName)
 	if err != nil {
 		return nil, func() {}, err
 	}
-	// defer appender.Close()
 
-	return appender, func() {
+	closeDbConnectionsFn := func() {
 		if err = conn.Close(); err != nil {
 			logger.Error(fmt.Sprintf("Error closing driver.Conn: %v", err))
 		}
@@ -84,8 +80,9 @@ func acquireAppender(cfg *Config, logger *zap.Logger) (*duckdb.Appender, func(),
 		if err = appender.Close(); err != nil {
 			logger.Error(fmt.Sprintf("Error closing *duckdb.Appender: %v", err))
 		}
+	}
 
-	}, nil
+	return appender, closeDbConnectionsFn, nil
 }
 
 func duckdbMapFromStringMap(m map[string]string) duckdb.Map {
