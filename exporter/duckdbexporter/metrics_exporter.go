@@ -13,9 +13,8 @@ import (
 )
 
 type metricsExporter struct {
-	conf       *Config
-	marshaller *marshaller
-	logger     *zap.Logger
+	conf   *Config
+	logger *zap.Logger
 }
 
 func (e *metricsExporter) consumeMetrics(_ context.Context, md pmetric.Metrics) error {
@@ -51,12 +50,6 @@ func (e *metricsExporter) consumeMetrics(_ context.Context, md pmetric.Metrics) 
 }
 
 func (e *metricsExporter) Start(_ context.Context, host component.Host) error {
-	var err error
-	e.marshaller, err = newMarshaller(e.conf, host)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

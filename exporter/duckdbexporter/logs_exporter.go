@@ -15,9 +15,8 @@ import (
 )
 
 type logsExporter struct {
-	conf       *Config
-	marshaller *marshaller
-	logger     *zap.Logger
+	conf   *Config
+	logger *zap.Logger
 }
 
 func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
@@ -86,11 +85,6 @@ func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
 
 // Start starts the flush timer if set.
 func (e *logsExporter) Start(_ context.Context, host component.Host) error {
-	var err error
-	e.marshaller, err = newMarshaller(e.conf, host)
-	if err != nil {
-		return err
-	}
 	// export := buildExportFunc(e.conf)
 
 	// Optionally ensure the output directory exists.

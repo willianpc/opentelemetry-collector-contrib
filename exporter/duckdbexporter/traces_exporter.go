@@ -18,17 +18,11 @@ import (
 
 // tracesExporter is the implementation of file exporter that writes telemetry data to a file
 type tracesExporter struct {
-	conf       *Config
-	marshaller *marshaller
-	logger     *zap.Logger
+	conf   *Config
+	logger *zap.Logger
 }
 
 func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) error {
-	_, err := e.marshaller.marshalTraces(td)
-	if err != nil {
-		return err
-	}
-
 	appender, closeDbConnections, err := acquireAppenderForTable(e.conf, e.logger, tracesTable)
 
 	if err != nil {
@@ -123,11 +117,6 @@ func (e *tracesExporter) consumeTraces(_ context.Context, td ptrace.Traces) erro
 
 // Start starts the flush timer if set.
 func (e *tracesExporter) Start(_ context.Context, host component.Host) error {
-	var err error
-	e.marshaller, err = newMarshaller(e.conf, host)
-	if err != nil {
-		return err
-	}
 	// export := buildExportFunc(e.conf)
 
 	// Optionally ensure the output directory exists.
