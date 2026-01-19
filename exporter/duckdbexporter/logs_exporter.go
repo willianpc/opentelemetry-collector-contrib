@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
@@ -19,7 +20,6 @@ type logsExporter struct {
 }
 
 func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
-
 	appender, closeDbConnections, err := acquireAppenderForTable(e.conf, e.logger, logsTable)
 
 	if err != nil {
@@ -33,51 +33,54 @@ func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
 	}
 
 	for _, rl := range ld.ResourceLogs().All() {
-		resourceAttrs := rl.Resource().Attributes().AsRaw()
-		fmt.Println("resource log attrs", resourceAttrs)
+		resourceUrl := rl.SchemaUrl()
 
 		for _, scope := range rl.ScopeLogs().All() {
 			scopeName := scope.Scope().Name()
 			scopeVersion := scope.Scope().Version()
-
-			fmt.Println("scope name and version:", scopeName, scopeVersion)
+			scopeUrl := scope.SchemaUrl()
+			scopeAttrs := internal.DuckDbMapFromIterable(scope.Scope().Attributes().All())
 
 			for _, log := range scope.LogRecords().All() {
-				flags := log.Flags()
-				logAttrs := log.Attributes().AsRaw()
+				flags := uint8(log.Flags())
 				logBody := log.Body().AsString()
 				logEventName := log.EventName()
-				logObsTimestamp := log.ObservedTimestamp().AsTime()
 				logSpanId := log.SpanID().String()
 				logTraceId := log.TraceID().String()
-				logSeverityNumber := log.SeverityNumber().String()
+				logSeverityNumber := uint8(log.SeverityNumber())
 				logSeverityText := log.SeverityText()
 				logTimestamp := log.Timestamp().AsTime()
-
-				fmt.Printf("log flags: %d\n, attrs: %v\n, body: %s\n, event name: %s\n, observed timestamp: %v\n, span id: %s\n, trace id: %s\n, sev number: %s\n, sev text: %s\n, timestamp: %v\n",
-					flags, logAttrs, logBody, logEventName, logObsTimestamp, logSpanId, logTraceId, logSeverityNumber, logSeverityText, logTimestamp,
-				)
+				serviceName := internal.GetServiceName(rl.Resource().Attributes())
 
 				err = appender.AppendRow(
-					logSpanId,
-					logTraceId,
-					scopeName,
 					logTimestamp,
+					logTraceId,
+					logSpanId,
+					flags,
+					logSeverityText,
+					logSeverityNumber,
+					serviceName,
+					logBody,
+					resourceUrl,
+					internal.DuckDbMapFromIterable(rl.Resource().Attributes().All()),
+					scopeUrl,
+					scopeName,
+					scopeVersion,
+					scopeAttrs,
+					internal.DuckDbMapFromIterable(log.Attributes().All()),
+					logEventName,
 				)
 
 				if err != nil {
 					e.logger.Error(fmt.Sprintf("Error appending logs: %v", err))
 					return fmt.Errorf("Error appending logs: %v", err)
 				}
+
+				e.logger.Info("Appending log: " + logBody)
 			}
 		}
 	}
 
-	// buf, err := e.marshaller.marshalMetrics(md)
-	// if err != nil {
-	// 	return err
-	// }
-	// return e.writer.export(buf)
 	return nil
 }
 
@@ -124,8 +127,9 @@ func (e *logsExporter) Shutdown(context.Context) error {
 	return nil
 }
 
-func newLogsExporter(conf *Config) LogsExporter {
+func newLogsExporter(logger *zap.Logger, conf *Config) LogsExporter {
 	return &logsExporter{
-		conf: conf,
+		conf:   conf,
+		logger: logger,
 	}
 }

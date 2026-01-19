@@ -102,7 +102,7 @@ func createLogsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Logs, error) {
-	exporter := newLogsExporter(cfg.(*Config))
+	exporter := newLogsExporter(set.Logger, cfg.(*Config))
 	return exporterhelper.NewLogs(
 		ctx,
 		set,

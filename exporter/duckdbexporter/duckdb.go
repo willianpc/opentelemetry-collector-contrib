@@ -18,7 +18,7 @@ const (
 const createTrcesTable = `CREATE TABLE %s (
 	service_name VARCHAR,
     name VARCHAR,
-    id VARCHAR primary key,
+    span_id VARCHAR PRIMARY KEY,
     parent_id VARCHAR,
     trace_id VARCHAR,
     kind VARCHAR,
@@ -44,10 +44,22 @@ const createTrcesTable = `CREATE TABLE %s (
 `
 
 const createLogsTable = `CREATE TABLE %s (
-	span_id VARCHAR,
-	trace_id VARCHAR,
-	scope VARCHAR,
-	timestamp TIMESTAMP
+    timestamp TIMESTAMP,
+    trace_id VARCHAR,
+    span_id VARCHAR,
+    flags UBIGINT,
+    severity_text VARCHAR,
+    severity_number UBIGINT,
+    service_name VARCHAR,
+    body VARCHAR,
+    res_url VARCHAR,
+    res_attrs map(VARCHAR, VARCHAR),
+    scope_url VARCHAR,
+    scope_name VARCHAR,
+    scopeVersion VARCHAR,
+    scope_attrs map(VARCHAR, VARCHAR),
+    log_attrs map(VARCHAR, VARCHAR),
+    event_name VARCHAR
 );`
 
 func acquireAppenderForTable(cfg *Config, logger *zap.Logger, table int) (*duckdb.Appender, func(), error) {
@@ -60,8 +72,6 @@ func acquireAppenderForTable(cfg *Config, logger *zap.Logger, table int) (*duckd
 	case logsTable:
 		tableName = cfg.LogsTableName
 		createTableQuery = createLogsTable
-	default:
-		tableName = ""
 	}
 
 	connector, err := duckdb.NewConnector(cfg.DatabaseName, nil)
