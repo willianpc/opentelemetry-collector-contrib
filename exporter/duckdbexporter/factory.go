@@ -6,7 +6,6 @@ package duckdbexporter // import "github.com/open-telemetry/opentelemetry-collec
 import (
 	"context"
 
-	_ "github.com/duckdb/duckdb-go/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/exporter"
@@ -44,14 +43,13 @@ type MetricsExporter interface {
 	consumeMetrics(_ context.Context, td pmetric.Metrics) error
 }
 
-// NewFactory creates a factory for OTLP exporter.
 func NewFactory() exporter.Factory {
 	return xexporter.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
 		xexporter.WithTraces(createTracesExporter, metadata.TracesStability),
 		xexporter.WithLogs(createLogsExporter, metadata.LogsStability),
-		// xexporter.WithMetrics(createMetricsExporter, metadata.MetricsStability),
+		xexporter.WithMetrics(createMetricsExporter, metadata.MetricsStability),
 	)
 }
 
@@ -85,14 +83,14 @@ func createMetricsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
-	ddbe := newMetricsExporter(cfg.(*Config))
+	exporter := newMetricsExporter(set.Logger, cfg.(*Config))
 	return exporterhelper.NewMetrics(
 		ctx,
 		set,
 		cfg,
-		ddbe.consumeMetrics,
-		exporterhelper.WithStart(ddbe.Start),
-		exporterhelper.WithShutdown(ddbe.Shutdown),
+		exporter.consumeMetrics,
+		exporterhelper.WithStart(exporter.Start),
+		exporterhelper.WithShutdown(exporter.Shutdown),
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 	)
 }

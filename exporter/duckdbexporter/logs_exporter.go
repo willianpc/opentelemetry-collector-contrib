@@ -7,10 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/duckdbexporter/internal"
 )
 
 type logsExporter struct {
@@ -70,7 +71,6 @@ func (e *logsExporter) consumeLogs(_ context.Context, ld plog.Logs) error {
 					internal.DuckDbMapFromIterable(log.Attributes().All()),
 					logEventName,
 				)
-
 				if err != nil {
 					e.logger.Error(fmt.Sprintf("Error appending logs: %v", err))
 					return fmt.Errorf("Error appending logs: %v", err)

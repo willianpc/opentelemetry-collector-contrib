@@ -3,8 +3,7 @@ type: duckdb
 status:
   class: exporter
   stability:
-    # alpha: [traces, metrics, logs]
-    alpha: [traces, logs]
+    alpha: [traces, metrics, logs]
     # development: [profiles]
   distributions: [core, contrib, k8s]
   codeowners:

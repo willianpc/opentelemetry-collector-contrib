@@ -18,7 +18,7 @@ const (
 const createTrcesTable = `CREATE TABLE %s (
 	service_name VARCHAR,
     name VARCHAR,
-    span_id VARCHAR PRIMARY KEY,
+    span_id VARCHAR,
     parent_id VARCHAR,
     trace_id VARCHAR,
     kind VARCHAR,

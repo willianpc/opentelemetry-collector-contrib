@@ -19,59 +19,54 @@ type metricsExporter struct {
 }
 
 func (e *metricsExporter) consumeMetrics(_ context.Context, md pmetric.Metrics) error {
-	// buf, err := e.marshaller.marshalMetrics(md)
-	// if err != nil {
-	// 	return err
-	// }
-	// return e.writer.export(buf)
+	for _, rm := range md.ResourceMetrics().All() {
+		resourceMetricsAttr := rm.Resource().Attributes().AsRaw()
+		resourceMetricsSchemaUrl := rm.SchemaUrl()
+
+		for _, scope := range rm.ScopeMetrics().All() {
+			scopeSchemaUrl := scope.SchemaUrl()
+			scopeAttrs := scope.Scope().Attributes().AsRaw()
+
+			for _, metric := range scope.Metrics().All() {
+				mDescr := metric.Description()
+				mName := metric.Name()
+				mUnit := metric.Unit()
+				mType := metric.Type().String()
+
+				e.logger.Info(fmt.Sprintf("resMetricAttrs: %v\nresMetricSchemaURL: %s\nscopeSchema: %s\nscopeattrs: %v\nmetric descr: %s\nmetric name: %s\nmetric unit: %s\nmetric type: %s",
+					resourceMetricsAttr,
+					resourceMetricsSchemaUrl,
+					scopeSchemaUrl,
+					scopeAttrs,
+					mDescr,
+					mName,
+					mUnit,
+					mType),
+				)
+			}
+		}
+	}
+
 	return nil
 }
 
-// Start starts the flush timer if set.
 func (e *metricsExporter) Start(_ context.Context, host component.Host) error {
 	var err error
 	e.marshaller, err = newMarshaller(e.conf, host)
 	if err != nil {
 		return err
 	}
-	// export := buildExportFunc(e.conf)
 
-	// Optionally ensure the output directory exists.
-	// if e.conf.CreateDirectory {
-	// 	dir := filepath.Dir(e.conf.Path)
-	// 	perm := os.FileMode(0o755)
-	// 	if e.conf.directoryPermissionsParsed != 0 {
-	// 		perm = os.FileMode(e.conf.directoryPermissionsParsed)
-	// 	}
-	// 	err = os.MkdirAll(dir, perm)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// e.writer, err = newFileWriter(e.conf.Path, e.conf.Append, e.conf.Rotation, e.conf.FlushInterval, export)
-	// if err != nil {
-	// 	return err
-	// }
-	// e.writer.start()
 	return nil
 }
 
-// Shutdown stops the exporter and is invoked during shutdown.
-// It stops the flush ticker if set.
 func (e *metricsExporter) Shutdown(context.Context) error {
-	// if e.writer == nil {
-	// 	return nil
-	// }
-	// w := e.writer
-	// e.writer = nil
-	// return w.shutdown()
-	fmt.Println("duckdb exporter shutdown...")
 	return nil
 }
 
-func newMetricsExporter(conf *Config) MetricsExporter {
+func newMetricsExporter(logger *zap.Logger, conf *Config) MetricsExporter {
 	return &metricsExporter{
-		conf: conf,
+		conf:   conf,
+		logger: logger,
 	}
 }
